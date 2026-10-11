@@ -11,6 +11,39 @@ const { Deliveries } = require('../modules/ffg/ffg.models');
 const { Groups } = require('../models/group');
 const { FfgGroups } = require('../modules/ffg/ffg.models');
 const { bindFfgGroup } = require('../modules/ffg/ffg.binding');
+const { createSource } = require('../modules/ffg/ffg.source');
+
+test('MySQL locks accept numeric and string 1 but reject unavailable or lost locks', async () => {
+  const names = ['HOST', 'USER', 'PASSWORD', 'DATABASE'].map(k => `FFG_MYSQL_${k}`);
+  const saved = names.map(k => process.env[k]);
+  names.forEach(k => { process.env[k] = 'fixture'; });
+  try {
+    for (const value of [1, '1', 0, '0', null]) {
+      let owned = value, executed = 0;
+      const connection = {
+        query: async sql => [[sql.includes('GET_LOCK') ? { acquired: value } : { owned }]],
+        execute: async () => { executed++; return [[{ incident: 'INC1' }]]; }, destroy: () => {},
+      };
+      const source = createSource({ createPool: () => ({
+        getConnection: async () => connection, end: async () => {},
+      }) });
+      try {
+        if (Number(value) === 1) {
+          await source.lock();
+          assert.deepEqual(await source.byIncidents(['INC1']), [{ incident: 'INC1' }]);
+          owned = '0';
+          await assert.rejects(source.byIncidents(['INC1']), /lock lost/);
+          assert.equal(executed, 1);
+        } else {
+          await assert.rejects(source.lock(), /Another FFG worker/);
+          assert.equal(executed, 0);
+        }
+      } finally { await source.close(); }
+    }
+  } finally {
+    names.forEach((k, i) => { if (saved[i] === undefined) delete process.env[k]; else process.env[k] = saved[i]; });
+  }
+});
 const row = { id: '8', incident: 'INC1', service_no: '03135967129',
   status: 'ANALYSIS', status_validasi: 'OPEN', reported_date: '2026-10-12 08:00:00',
   status_date: '2026-10-12 10:00:00', updated_at: '2026-10-12 10:01:00',
