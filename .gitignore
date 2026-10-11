@@ -1,0 +1,8 @@
+node_modules/
+.env
+*.zip
+.DS_Store
+mnt/
+
+# Local Google service-account credentials
+config/gsheet.json
