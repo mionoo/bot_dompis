@@ -3,9 +3,11 @@ const { Tickets, State, Deliveries, FfgGroups } = require('./ffg.models');
 const { Groups } = require('../../models/group');
 const { active, normalize, sla, dayRange } = require('./ffg.logic');
 const { buildExcel } = require('./ffg.excel');
+const { activeMessages } = require('./ffg.formatter');
 const normalizeBranch = value => normalize(value).replace(/^(AREA|BRANCH)\s+/, '').trim();
 
 function messages(area, tickets, mode, now) {
+  if (mode !== 'hourly') return activeMessages(area, tickets, now);
   const header = `FFG ${mode === 'hourly' ? 'REKAP HARI INI' : 'OPEN + SLA'}\n${area}\n` +
     moment(now).tz('Asia/Jakarta').format('DD-MM-YYYY HH:mm [WIB]') + `\nTotal: ${tickets.length}\n`;
   const chunks = []; let chunk = header;
@@ -47,7 +49,8 @@ async function runFfg(mode, now = new Date(), runtime = {}) {
   for (const group of groups) {
     const area = normalizeBranch(group.BRANCH);
     if (!area) continue;
-    const list = tickets.filter(t => normalizeBranch(workzones.get(t.workzone)?.BRANCH) === area);
+    const list = tickets.filter(t => normalizeBranch(workzones.get(t.workzone)?.BRANCH) === area)
+      .map(t => ({ ...t, HSA: normalize(workzones.get(t.workzone)?.SERVICE_AREA) }));
     if (!list.length) continue;
     const zone = mapping.find(g => normalizeBranch(g.BRANCH) === area)?.ZONEBOT;
     if (!zone) { console.warn(`FFG: no bot mapping for ${area}`); continue; }

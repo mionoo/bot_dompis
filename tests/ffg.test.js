@@ -12,6 +12,7 @@ const { Groups } = require('../models/group');
 const { FfgGroups } = require('../modules/ffg/ffg.models');
 const { bindFfgGroup } = require('../modules/ffg/ffg.binding');
 const { createSource } = require('../modules/ffg/ffg.source');
+const { activeMessages, remainingTime } = require('../modules/ffg/ffg.formatter');
 test('Mongoose pipeline update is explicitly enabled without opening a database', () => {
   assert.throws(() => Tickets.updateMany({}, [{ $set: { status_validasi: 'OPEN' } }]), /updatePipeline/);
   const query = Tickets.updateMany({}, [{ $set: { status_validasi: 'OPEN' } }], { updatePipeline: true });
@@ -53,6 +54,43 @@ const row = { id: '8', incident: 'INC1', service_no: '03135967129',
   status: 'ANALYSIS', status_validasi: 'OPEN', reported_date: '2026-10-12 08:00:00',
   status_date: '2026-10-12 10:00:00', updated_at: '2026-10-12 10:01:00',
   customer_segment: 'DES', service_type: 'ASTINET', customer_name: '=1+1' };
+
+test('TTR HD-style FFG groups HSA/segment and sorts urgent tickets first', () => {
+  const now = new Date('2026-10-12T04:00:00Z');
+  const tickets = [
+    { ...snapshot(row), incident: 'SAFE', HSA: 'PAMEKASAN', reported_at: new Date('2026-10-12T03:00:00Z') },
+    { ...snapshot(row), incident: 'OVER', HSA: 'PAMEKASAN', reported_at: new Date('2026-10-12T00:00:00Z'),
+      ticket: { booking_date: '2026-10-13 09:00:00' } },
+    { ...snapshot(row), incident: 'OTHER', HSA: 'DARMO' },
+  ];
+  const text = activeMessages('SURABAYA', tickets, now).join('\n');
+  assert.ok(text.includes('📍 HSA: PAMEKASAN\nTotal Tiket : 2'));
+  assert.ok(text.includes('DATIN (2 tiket | SLA 3H | 🔴 1 OVER SLA)'));
+  assert.ok(text.indexOf('🔴 OVER |') < text.indexOf('🟢 SAFE |'));
+  assert.ok(text.includes('Sisa: -1:00'));
+  assert.ok(text.includes('13/10/2026 09:00:00'));
+  assert.ok(text.indexOf('HSA: DARMO') < text.indexOf('HSA: PAMEKASAN'));
+});
+test('long FFG messages retain HSA context, stay within size limit and include each incident once', () => {
+  const tickets = Array.from({ length: 350 }, (_, i) => ({ ...snapshot(row),
+    incident: `INC_TEST_${String(i).padStart(4, '0')}`, HSA: 'PAMEKASAN', workzone: 'PME' }));
+  const chunks = activeMessages('SURABAYA', tickets, new Date('2026-10-12T04:00:00Z'));
+  assert.ok(chunks.length > 1);
+  for (const text of chunks) {
+    assert.ok(text.length <= 3800);
+    assert.ok(text.includes('📍 HSA: PAMEKASAN') && text.includes('📌 DATIN'));
+  }
+  const ids = chunks.join('\n').match(/INC_TEST_\d{4}/g);
+  assert.equal(ids.length, 350); assert.equal(new Set(ids).size, 350);
+});
+test('remaining time and missing SLA data remain explicit', () => {
+  assert.equal(remainingTime(0.75), '0:45');
+  assert.equal(remainingTime(-1.5), '-1:30');
+  const text = activeMessages('SURABAYA', [{ ...snapshot(row), reported_at: null }], new Date()).join('');
+  assert.ok(text.includes('HSA BELUM DIPETAKAN'));
+  assert.ok(text.includes('WAKTU SLA BELUM TERSEDIA'));
+  assert.ok(!text.includes('NaN'));
+});
 
 test('four stopping statuses and unknown statuses excluded, live states included', () => {
   for (const status of STOP) assert.equal(active({ status: ` ${status.toLowerCase()} ` }), false);

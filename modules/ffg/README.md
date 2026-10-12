@@ -54,6 +54,10 @@ oleh `test.js`.
 
 - Setiap 15 menit sepanjang hari: tiket FFG aktif dengan `status_validasi=OPEN`
   dari seluruh tanggal laporan, beserta SLA, tanpa Excel.
+  Format mengikuti TTR HD: kelompok HSA, lalu segmen dan tahap SLA; setiap baris
+  berisi indikator warna, incident, sisa waktu jam:menit, workzone, serta booking
+  date jika tersedia. Tiket paling mendesak berada di atas pada tiap kelompok.
+  Pesan panjang dipecah dengan judul, HSA dan segmen diulang pada pesan lanjutan.
 - Status `CLOSED`, `RESOLVED`, `MEDIACARE`, dan `SALAMSIM` menghentikan SLA.
   Status kosong, UNKNOWN, dan STATUS tidak masuk notifikasi aktif.
 - Setiap 1 jam: seluruh tiket FFG yang dilaporkan pada hari tersebut dalam WIB,
