@@ -83,6 +83,19 @@ test('long FFG messages retain HSA context, stay within size limit and include e
   const ids = chunks.join('\n').match(/INC_TEST_\d{4}/g);
   assert.equal(ids.length, 350); assert.equal(new Set(ids).size, 350);
 });
+test('SQM labels only PROACTIVE tickets directly after incident', () => {
+  const tickets = [
+    { ...snapshot(row), incident: 'INC_SQM', source_ticket: ' proactive ' },
+    { ...snapshot(row), incident: 'INC_CUSTOMER', source_ticket: 'CUSTOMER' },
+    { ...snapshot(row), incident: 'INC_RAW_SQM', ticket: { source_ticket: 'PROACTIVE' } },
+  ];
+  const text = activeMessages('SURABAYA', tickets, new Date('2026-10-12T04:00:00Z')).join('\n');
+  assert.ok(text.includes('INC_SQM | SQM | Sisa:'));
+  assert.ok(text.includes('INC_RAW_SQM | SQM | Sisa:'));
+  assert.ok(text.includes('INC_CUSTOMER | Sisa:'));
+  assert.ok(!text.includes('INC_CUSTOMER | SQM'));
+});
+
 test('remaining time and missing SLA data remain explicit', () => {
   assert.equal(remainingTime(0.75), '0:45');
   assert.equal(remainingTime(-1.5), '-1:30');

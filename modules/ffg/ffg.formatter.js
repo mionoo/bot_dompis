@@ -1,6 +1,6 @@
 const moment = require('moment-timezone');
 const { SEGMENT_PRIORITY } = require('../branch/branch.data');
-const { sla, sourceDate } = require('./ffg.logic');
+const { sla, sourceDate, normalize } = require('./ffg.logic');
 const clean = value => String(value || '-').replace(/[\r\n]+/g, ' ').slice(0, 120);
 function remainingTime(hours) {
   if (!Number.isFinite(hours)) return '-';
@@ -44,7 +44,8 @@ function activeMessages(branch, tickets, now) {
       for (const { ticket, value } of list) {
         const icon = { SAFE: '🟢', WARNING: '🟡', CRITICAL: '🟠', 'OVER SLA': '🔴' }[value.label] || '⚪';
         const booking = sourceDate(ticket.ticket?.booking_date);
-        const line = `${icon} ${clean(ticket.incident)} | Sisa: ${remainingTime(value.remaining)} | ${clean(ticket.workzone)}` +
+        const sqm = normalize(ticket.source_ticket || ticket.ticket?.source_ticket) === 'PROACTIVE' ? ' | SQM' : '';
+        const line = `${icon} ${clean(ticket.incident)}${sqm} | Sisa: ${remainingTime(value.remaining)} | ${clean(ticket.workzone)}` +
           (booking ? ` | ${moment(booking).tz('Asia/Jakarta').format('DD/MM/YYYY HH:mm:ss')}` : '') +
           (!Number.isFinite(value.remaining) ? ` | ${value.label}` : '') + '\n';
         if (chunk.length + prefix.length + line.length > 3800) {

@@ -56,7 +56,8 @@ oleh `test.js`.
   dari seluruh tanggal laporan, beserta SLA, tanpa Excel.
   Format mengikuti TTR HD: kelompok HSA, lalu segmen dan tahap SLA; setiap baris
   berisi indikator warna, incident, sisa waktu jam:menit, workzone, serta booking
-  date jika tersedia. Tiket paling mendesak berada di atas pada tiap kelompok.
+  date jika tersedia. Label SQM ditambahkan setelah incident jika source_ticket
+  adalah PROACTIVE. Tiket paling mendesak berada di atas pada tiap kelompok.
   Pesan panjang dipecah dengan judul, HSA dan segmen diulang pada pesan lanjutan.
 - Status `CLOSED`, `RESOLVED`, `MEDIACARE`, dan `SALAMSIM` menghentikan SLA.
   Status kosong, UNKNOWN, dan STATUS tidak masuk notifikasi aktif.
