@@ -64,12 +64,18 @@ async function runFfg(mode, now = new Date(), runtime = {}) {
       const options = group.ID_TOPIC_GRUP ? { message_thread_id: Number(group.ID_TOPIC_GRUP) } : {};
       // Use the same bot/area routing as TTR. Its text sender swallows errors,
       // so FFG calls Telegram directly to record uncertain delivery accurately.
-      for (const message of messages(area, list, mode, now)) {
+      const reportMessages = messages(area, list, mode, now);
+      for (const message of reportMessages) {
         await bot.telegram.sendMessage(group.ID_GRUP, message, options);
       }
       if (excel) await bot.telegram.sendDocument(group.ID_GRUP,
         { source: excel, filename: `FFG-${area.replace(/[^A-Z0-9_-]/g, '_')}-${slot.format('YYYYMMDD-HHmm')}.xlsx` }, options);
       await Deliveries.updateOne({ _id: key }, { $set: { status: 'SENT', completed_at: new Date() } });
+      console.log(`✅ FFG ${mode === 'hourly' ? 'rekap 1 jam' : '15 menit'} terkirim | ` +
+        `${area} | ${list.length} tiket | ${reportMessages.length} pesan` +
+        (excel ? ' | Excel' : '') +
+        ` | grup ${group.ID_GRUP} | topik ${group.ID_TOPIC_GRUP || '-'} | ` +
+        moment(now).tz('Asia/Jakarta').format('DD/MM/YYYY HH:mm [WIB]'));
     } catch (error) {
       await Deliveries.updateOne({ _id: key }, { $set: { status: 'UNKNOWN',
         last_error: 'Delivery may be partial; inspect Telegram before retry' } });
