@@ -12,6 +12,7 @@ const { Groups } = require('../models/group');
 const { FfgGroups } = require('../modules/ffg/ffg.models');
 const { bindFfgGroup } = require('../modules/ffg/ffg.binding');
 const { createSource } = require('../modules/ffg/ffg.source');
+const { testFfg } = require('../modules/ffg/ffg.commands');
 const { activeMessages, remainingTime } = require('../modules/ffg/ffg.formatter');
 test('Mongoose pipeline update is explicitly enabled without opening a database', () => {
   assert.throws(() => Tickets.updateMany({}, [{ $set: { status_validasi: 'OPEN' } }]), /updatePipeline/);
@@ -214,7 +215,7 @@ test('report selection, attachment schedule and period dedup without Telegram', 
     { ...snapshot(row, now), incident: 'STALE1', workzone: 'STO1', synced_at: new Date(0) },
     { ...snapshot(row, now), incident: 'OTHER_BRANCH', workzone: 'STO2' },
   ];
-  let texts = [], files = [], states = [], fresh = true, fail = false;
+  let texts = [], files = [], states = [], detailUpdates = [], fresh = true, fail = false;
   const keys = new Set();
   State.findById = () => ({ lean: async () => ({ completed_at: fresh ? now : new Date(0) }) });
   Tickets.find = query => ({ sort: () => ({ lean: async () => {
@@ -230,7 +231,7 @@ test('report selection, attachment schedule and period dedup without Telegram', 
     if (keys.has(doc._id)) { const error = new Error('duplicate'); error.code = 11000; throw error; }
     keys.add(doc._id);
   };
-  Deliveries.updateOne = async (filter, update) => { states.push(update.$set.status); };
+  Deliveries.updateOne = async (filter, update) => { states.push(update.$set.status); detailUpdates.push(update.$set); };
   const runtime = { getBotByZone: async () => ({ telegram: {
     sendMessage: async (chat, text, options) => {
       assert.equal(options.message_thread_id, 2);
@@ -267,8 +268,29 @@ test('report selection, attachment schedule and period dedup without Telegram', 
       keys.clear(); fail = true;
       await runFfg('active', next, runtime);
       assert.equal(states.at(-1), 'UNKNOWN');
+      assert.equal(detailUpdates.at(-1).failed_stage, 'sendMessage');
+      assert.equal(detailUpdates.at(-1).sent_messages, 0);
       fail = false; await runFfg('active', next, runtime);
       assert.equal(texts.length, 2);
+    });
+    await t.test('manual test bypasses schedule UNKNOWN and remains deduplicated by command', async () => {
+      const manual = { ...runtime, trigger: 'manual', requestId: 'TEST_BOT:PRIVATE:1' };
+      const result = await runFfg('active', now, manual);
+      assert.equal(result.sent, 1);
+      assert.equal(texts.length, 3);
+      const replay = await runFfg('active', now, manual);
+      assert.equal(replay.skipped, 1); assert.equal(texts.length, 3);
+    });
+    await t.test('Excel failure records successful text and Telegram error code', async () => {
+      const bot = { telegram: { sendMessage: async () => ({ message_id: 123 }),
+        sendDocument: async () => { throw { response: { error_code: 429, parameters: { retry_after: 12 } } }; } } };
+      const result = await runFfg('hourly', now, { trigger: 'manual', requestId: 'TEST_BOT:PRIVATE:2',
+        getBotByZone: async () => bot });
+      assert.equal(result.failed, 1);
+      const detail = detailUpdates.at(-1);
+      assert.equal(detail.failed_stage, 'sendDocument'); assert.equal(detail.error_code, '429');
+      assert.equal(detail.sent_messages, 1); assert.equal(detail.attachment_sent, false);
+      assert.deepEqual(detail.message_ids, [123]); assert.equal(detail.retry_after, 12);
     });
   } finally {
     State.findById = saved.state; Tickets.find = saved.tickets;
@@ -310,4 +332,19 @@ test('FFG binding stores branch/group/topic and handles invalid or duplicate com
     await bindFfgGroup(context('/ffg_SURABAYA', 'group', null), model);
     assert.equal(records.at(-1).ID_TOPIC_GRUP, null);
   });
+});
+
+
+test('manual FFG commands are private-only and pass a separate request identity', async () => {
+  let calls = [], replies = [];
+  const runner = async (...args) => { calls.push(args); return { sent: 2, failed: 1, skipped: 0 }; };
+  const context = { chat: { type: 'supergroup', id: 1 }, botInfo: { id: 22 },
+    message: { message_id: 33 }, reply: async text => { replies.push(text); } };
+  await testFfg(context, 'active', runner); assert.equal(calls.length, 0);
+  context.chat.type = 'private';
+  await testFfg(context, 'active', runner);
+  await testFfg(context, 'hourly', runner);
+  assert.equal(calls.length, 2); assert.equal(calls[0][0], 'active'); assert.equal(calls[1][0], 'hourly');
+  assert.equal(calls[0][2].trigger, 'manual'); assert.equal(calls[0][2].requestId, '22:1:33');
+  assert.ok(replies.at(-1).includes('Berhasil: 2 tujuan'));
 });

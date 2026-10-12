@@ -77,6 +77,23 @@ oleh `test.js`.
 
 ## Pencegahan pengiriman ganda
 
+### Tes manual melalui japri bot
+
+- `/tesffgremin`: langsung mengirim laporan OPEN + SLA tanpa Excel.
+- `/tesffgalltiket`: langsung mengirim rekap tiket hari ini beserta Excel.
+
+Kedua command hanya diterima melalui japri. Hasil dikirim ke semua grup/topik
+FFG ACTIVE, sesuai branch masing-masing, dan ringkasan keberhasilan dibalas
+di japri. Tes tetap memakai data asli dan pemeriksaan kesegaran sinkronisasi.
+Jadwal otomatis tidak berubah. Setiap command memiliki kunci pengiriman manual
+berdasarkan bot, chat, dan ID pesan; record UNKNOWN pada jadwal tidak menghalangi
+tes baru. Pemrosesan ulang pesan command yang sama tidak menggandakan kiriman.
+
+Console dan `ffg_deliveries` mencatat `report_type`, `trigger`, branch, tujuan,
+`failed_stage`, `error_code`, `sent_messages`, `message_ids`, dan `attachment_sent`.
+Jika tersedia, `retry_after` Telegram juga disimpan, tanpa retry otomatis.
+Error dan pencatatan tidak menampilkan token, URI koneksi, atau objek request.
+
 Setiap tujuan dan periode memiliki kunci pengiriman unik. Status SENDING atau
 UNKNOWN setelah proses berhenti atau pengiriman sebagian tidak dicoba ulang
 secara otomatis. Periksa pesan Telegram sebelum menghapus kunci pengiriman

@@ -111,6 +111,12 @@ async function handleGroupBinding(ctx, { text, prefix, Model, label }) {
 
 async function dispatch(ctx) {
   const text = ctx.message?.text || "";
+  const ffgTestCommand = text.trim().split(/\s+/)[0].replace(/@[A-Za-z0-9_]+$/, '').toLowerCase();
+  if (['/tesffgremin', '/tesffgalltiket'].includes(ffgTestCommand)) {
+    const { testFfg } = require('../modules/ffg/ffg.commands');
+    return testFfg(ctx, ffgTestCommand === '/tesffgremin' ? 'active' : 'hourly');
+  }
+
   const isPrivateChat = ctx.chat?.type === "private";
   const isCommand = (name) => new RegExp(`^/${name}(?:@[A-Za-z0-9_]+)?(?:\\s|$)`).test(text);
 
