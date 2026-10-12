@@ -12,6 +12,11 @@ const { Groups } = require('../models/group');
 const { FfgGroups } = require('../modules/ffg/ffg.models');
 const { bindFfgGroup } = require('../modules/ffg/ffg.binding');
 const { createSource } = require('../modules/ffg/ffg.source');
+test('Mongoose pipeline update is explicitly enabled without opening a database', () => {
+  assert.throws(() => Tickets.updateMany({}, [{ $set: { status_validasi: 'OPEN' } }]), /updatePipeline/);
+  const query = Tickets.updateMany({}, [{ $set: { status_validasi: 'OPEN' } }], { updatePipeline: true });
+  assert.equal(query._mongooseOptions.updatePipeline, true);
+});
 
 test('MySQL locks accept numeric and string 1 but reject unavailable or lost locks', async () => {
   const names = ['HOST', 'USER', 'PASSWORD', 'DATABASE'].map(k => `FFG_MYSQL_${k}`);
@@ -123,7 +128,9 @@ test('sync captures final CLOSE once and excludes it from subsequent source read
       for (const doc of docs) if (doc.status_validasi === 'OPEN') yield doc;
     } }) }) };
   };
-  Tickets.updateMany = async () => {};
+  Tickets.updateMany = async (filter, update, options) => {
+    if (Array.isArray(update)) assert.equal(options?.updatePipeline, true);
+  };
   Tickets.updateOne = async (filter, update) => {
     assert.equal(filter.status_validasi, 'OPEN');
     Object.assign(docs.find(d => d.incident === filter.incident), update.$set);

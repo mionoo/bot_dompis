@@ -7,7 +7,7 @@ class FfgWorker {
     await Tickets.updateMany({ status_validasi: { $exists: false },
       'ticket.status_validasi': { $type: 'string' } }, [{ $set: {
       status_validasi: { $toUpper: { $trim: { input: '$ticket.status_validasi' } } },
-    } }]);
+    } }], { updatePipeline: true });
     let batch = [];
     for await (const doc of Tickets.find({ status_validasi: 'OPEN' }).select('incident').lean().cursor()) {
       batch.push(doc.incident);
