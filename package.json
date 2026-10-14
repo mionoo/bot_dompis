@@ -7,7 +7,8 @@
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "ffg:worker": "node scripts/ffg-worker.js",
-    "test:ffg": "node --test tests/ffg.test.js"
+    "test:ffg": "node --test tests/ffg.test.js",
+    "test:bot-startup": "node --test tests/botStartup.test.js"
   },
   "keywords": [],
   "author": "",

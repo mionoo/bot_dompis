@@ -540,15 +540,7 @@ const groupServiceAreaHandler = async (ctx) => {
   bot.action(/^group_sa_(.+)_(.+)$/, groupServiceAreaHandler);
 });
 
-// launch() masing-masing bot dijalankan independen dan errornya ditangkap
-// per-bot: kalau satu token invalid/network gagal, bot lain tetap jalan
-// dan errornya ter-log jelas, bukan jadi unhandled rejection yang mematikan
-// semua bot sekaligus.
-BOTS.forEach(({ bot, label }) => {
-  bot
-    .launch()
-    .then(() => console.log(`✅ Bot ${label} launched`))
-    .catch((err) => console.error(`❌ Gagal launch bot ${label}:`, err));
-});
+// Startup independen: jeda antarbot dan retry hanya untuk gangguan sementara.
+require('../core/botStartup').startBots(BOTS);
 
 //module.exports = { bot, bot2 }
