@@ -58,14 +58,14 @@ async function runPloting(ctx) {
           message
         });
 
-        await delay(500);
+        await delay(300);
 
       }
      // await delay(300);
 
-      // console.log(
-      //   `✅ ${hsa} terkirim ke ${users.length} naker`
-      // );
+      console.log(
+        `✅ ${hsa} terkirim ke ${users.length} naker`
+      );
     }
 
   } catch (err) {
