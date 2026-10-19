@@ -217,49 +217,17 @@ async function dispatch(ctx) {
     return ctx.reply("Tes kirim evident berhasil 🚀");
   }
 
-  if (text === "/testtr") {
-    await jalanSegmentasi();
-    await runTTR(ctx); // ✅ FIX (pakai ctx)
-    // await clearSegmentTickets(); // HAPUS COLLECTION
-    // await clearAllTickets(); // HAPUS COLLECTION
-    return ctx.reply("TTR sedang diproses 🚀");
-  }
-
-  if (text === "/tesploting") {
-    await jalanSegmentasi();
-    await runPloting(ctx); // ✅ FIX (pakai ctx)
-    // await clearSegmentTickets(); // HAPUS COLLECTION
-    //console.log(await findOfficer())
-    return ctx.reply("PLoting Test sedang diproses 🚀");
-  }
-
-  if (text.startsWith("/cekofficer")) {
-    // Dijalankan fire-and-forget (tidak di-await) karena bisa lama; error
-    // tetap ditangkap lewat .catch() supaya tidak jadi unhandled rejection.
-    await ctx.reply("Okeh, di tunggu yaa 🚀");
-
-    jalanSegmentasi()
-      .then(() => runTtrOfficer(ctx))
-      .catch((err) => {
-        console.error("❌ ERROR /cekofficer:", err);
-      });
-
-    return;
-  }
-
-  if (text.startsWith("/tesgrupb2b")) {
-    ctx.reply("okeh di tunggu yaa 🚀");
-    await jalanSegmentasi();
-    await runTtrb2b(ctx); // ✅ FIX (pakai ctx)
-    return;
-  }
-
-  if (text.startsWith("/tesgrupHD")) {
-    await jalanSegmentasi();
-    await runTtrHD(ctx); // ✅ FIX (pakai ctx)
-    // await clearSegmentTickets(); // HAPUS COLLECTION
-    // console.log(await findOfficer())
-    return ctx.reply("okeh di tunggu yaa 🚀");
+  const manualReports = [
+    { matches: text === "/testtr", command: "/testtr", message: "TTR sedang diproses 🚀", run: runTTR },
+    { matches: text === "/tesploting", command: "/tesploting", message: "Ploting Test sedang diproses 🚀", run: runPloting },
+    { matches: text.startsWith("/cekofficer"), command: "/cekofficer", message: "Officer sedang diproses 🚀", run: runTtrOfficer },
+    { matches: text.startsWith("/tesgrupb2b"), command: "/tesgrupb2b", message: "TTR B2B sedang diproses 🚀", run: runTtrb2b },
+    { matches: text.startsWith("/tesgrupHD"), command: "/tesgrupHD", message: "TTR HD sedang diproses 🚀", run: runTtrHD },
+  ];
+  const manualReport = manualReports.find(report => report.matches);
+  if (manualReport) {
+    const { startManualReport } = require("./manualReport");
+    return startManualReport(ctx, { ...manualReport, prepare: jalanSegmentasi });
   }
 
   if (/^\/ffg_/i.test(text)) return bindFfgGroup(ctx);
