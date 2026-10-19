@@ -16,56 +16,7 @@ const { sendGlobal, delay } = require("../../core/globalSender");
 // GET PIC MAPPING BY HSA
 // ======================================================
 
-async function getPicMappingByHSA() {
-  const data = await Nakers.find({
-    SERVICE_AREA: {
-      $exists: true,
-      $nin: ["", null],
-    },
-
-    BRANCH: {
-      $exists: true,
-      $nin: ["", null],
-    },
-
-    ID_TELEGRAM: {
-      $exists: true,
-      $nin: ["", null],
-    },
-
-    LEVEL: {
-      $in: ["HSA", "Korlap", "OSA", "Officer 3"],
-    },
-  }).lean();
-
-  const mapping = {};
-
-  for (const user of data) {
-    if (!user.ID_TELEGRAM) {
-      continue;
-    }
-
-    const hsa = (user.SERVICE_AREA || "").toUpperCase().trim();
-
-    const branch = (user.BRANCH || "").toUpperCase().trim();
-
-    if (!hsa || !branch) {
-      continue;
-    }
-
-    if (!mapping[hsa]) {
-      mapping[hsa] = [];
-    }
-
-    mapping[hsa].push({
-      chatId: user.ID_TELEGRAM,
-      topic: user.ID_TOPIC_GRUP,
-      branch,
-    });
-  }
-
-  return mapping;
-}
+const { getPicMappingByHSA } = require("./ploting.recipients");
 
 // ======================================================
 // RUN PLOTING
