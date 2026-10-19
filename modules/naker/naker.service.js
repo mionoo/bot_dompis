@@ -26,7 +26,7 @@ async function updateLabour(nik, labour, telegramId) {
 async function findOfficer() {
   return await Nakers.find({
     LEVEL: {
-      $in: ['Manager', 'Officer 2', 'Officer 1']
+      $regex: /^\s*(?:MANAGER|OFFICER\s+[12])\s*$/i
     },
     BRANCH: {
       $exists: true,
@@ -43,7 +43,7 @@ async function findOfficer() {
 async function getPicMappingByHSA() {
   const data = await Nakers.find({
     SERVICE_AREA: { $exists: true, $nin: ['', null] },
-    LEVEL: { $in: ['HSA', 'Korlap', 'Officer 3'] }
+    LEVEL: { $regex: /^\s*(?:HSA|KORLAP|OFFICER\s+3)\s*$/i }
   })
 
   const mapping = {}
