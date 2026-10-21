@@ -68,8 +68,7 @@ async function processTickets() {
 
     const customerType = ticket.customer_type?.trim();
 
-	const ownergroup = ticket.owner_group?.trim();
-
+    const ownergroup = ticket.owner_group?.trim();
 
     // =================================
     // PRIORITAS 1
@@ -85,7 +84,6 @@ async function processTickets() {
     // PRIORITAS 2
     // SKIP NON TECH
     // =================================
-
 
     if (classificationFlag !== "TECHNICAL") {
       skipped++;
@@ -103,35 +101,30 @@ async function processTickets() {
       continue;
     }
 
-         // =================================
+    // =================================
     // PRIORITAS 3
     // SKIP Z_PERMINTAAN_044
     // =================================
 
-//    if (["Z_PERMINTAAN_044"].includes(classificationpath)) {
-//      skipped++;
-//      continue;
-//    }
+    //    if (["Z_PERMINTAAN_044"].includes(classificationpath)) {
+    //      skipped++;
+    //      continue;
+    //    }
 
     if (["Z_PERMINTAAN_044", "C_REQ_001_002"].includes(classificationpath)) {
       skipped++;
       continue;
     }
 
-
-
     // =================================
     // PRIORITAS 4
     // SKIP customer_type
     // =================================
 
-
-//      if (["REGULER", "GOLD", "DIAMOND"].includes(customerType)) {
-//      skipped++;
-//      continue;
-//    }
-
-
+    //      if (["REGULER", "GOLD", "DIAMOND"].includes(customerType)) {
+    //      skipped++;
+    //      continue;
+    //    }
 
     if (["ERM-RETENSI"].includes(ownergroup)) {
       skipped++;
@@ -156,53 +149,42 @@ async function processTickets() {
     // CLEAN DATA
     // =================================
 
-const cleanTicket = {
-  incident: ticket.incident || null,
+    const cleanTicket = {
+      incident: ticket.incident || null,
 
-//  reported_date: ticket.reported_date
-//    ? moment(ticket.reported_date)
-//        .tz("Asia/Jakarta")
-//        .toDate()
-//    : null,
+      reported_date: ticket.reported_date
+        ? moment(ticket.reported_date).subtract(7, "hours").toDate()
+        : null,
 
-reported_date: ticket.reported_date
-  ? moment(ticket.reported_date)
-      .subtract(7, "hours")
-      .toDate()
-  : null,
+      workzone: workzone || null,
 
-  workzone: workzone || null,
+      service_no: ticket.service_no || null,
 
-  service_no: ticket.service_no || null,
+      service_type: ticket.service_type || null,
+      last_update_worklog: ticket.last_update_worklog || null,
+      worklog_summary: ticket.worklog_summary || null,
+      summary: ticket.summary || null,
+      perangkat: ticket.perangkat || null,
+      device_name: ticket.device_name || null,
+      region: ticket.region || null,
+      witel: ticket.witel || null,
+      incident_domain: ticket.incident_domain || null,
+      description_actual_solution: ticket.description_actual_solution || null,
 
-  service_type: ticket.service_type || null,
+      booking_date: ticket.booking_date
+        ? moment(ticket.booking_date).subtract(7, "hours").toDate()
+        : null,
 
-//  booking_date: ticket.booking_date
-//    ? moment(ticket.booking_date)
-//        .tz("Asia/Jakarta")
-//        .toDate()
-//    : null,
+      jenis_tiket: jenis_tiket || null,
 
-booking_date: ticket.booking_date
-  ? moment(ticket.booking_date)
-      .subtract(7, "hours")
-      .toDate()
-  : null,
+      status: status || null,
 
+      guarantee_status: ticket.guarantee_status || null,
 
-  jenis_tiket: jenis_tiket || null,
+      SERVICE_AREA: groupData.SERVICE_AREA || null,
 
-  status: status || null,
-
-  guarantee_status:
-    ticket.guarantee_status || null,
-
-  SERVICE_AREA:
-    groupData.SERVICE_AREA || null,
-
-  BRANCH:
-    groupData.BRANCH || null,
-};
+      BRANCH: groupData.BRANCH || null,
+    };
 
     // =================================
     // BULK OPERATION

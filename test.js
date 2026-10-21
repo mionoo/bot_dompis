@@ -1,5 +1,6 @@
 // Scheduler TTR, Officer, Ploting, B2B, dan HD.
 const cron = require("node-cron");
+const { runGamas } = require("./modules/gamas/gamas.service");
 const { runTTR } = require("./modules/ttr/ttr.service");
 const { runTtrOfficer } = require("./modules/ttrOfficer/ttrOfficer.service");
 const { runTtrb2b } = require("./modules/ttrb2b/ttrb2b.service");
@@ -42,6 +43,9 @@ async function runSchedulerJob({ label, includeTTR }) {
     console.log("ttr b2b done");
     await runTtrHD();
     console.log("monitoring HD done");
+
+    await runGamas();
+    console.log("report gamas done");
 
     await clearSegmentTickets();
     await clearAllTickets();

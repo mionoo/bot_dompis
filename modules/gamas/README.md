@@ -1,0 +1,40 @@
+# Report GAMAS
+
+Tambahkan salah satu bot operasional ke grup Telegram khusus GAMAS. Admin grup
+menjalankan `/setgamas` di grup atau topik tujuan. Binding disimpan di collection
+`idgroupgamas`, termasuk bot yang menerima command. Setiap tujuan menerima seluruh
+GAMAS AREA 3; tidak difilter berdasarkan alokasi branch bot.
+
+Scheduler `test.js` memanggil `runGamas()` setelah segmentasi dan sebelum koleksi
+sementara dibersihkan: setiap 15 menit pukul 08.00–21.45 dan setiap jam pukul
+22.00–07.00, zona Asia/Jakarta. Restart proses bot setelah memasang perubahan.
+Tidak ada pengiriman langsung saat binding.
+
+Sumber laporan hanya `segment_tickets`, jenis GAMAS dan GAMAS_FEEDER/GPON/
+DISTRIBUSI/ODP/ODC, tanpa filter status tambahan. Incident dideduplikasi.
+Urutan pesan: pembuka, jenis GAMAS, Witel beserta jumlahnya, lalu satu pesan
+per incident. Grup kosong tetap mendapat pembuka dengan total 0.
+
+Detail baru diteruskan oleh pipeline segmentasi: region, witel, perangkat,
+device_name, summary, incident_domain, description_actual_solution,
+worklog_summary, last_update_worklog. Dokumen lama yang belum mempunyai field
+tersebut menampilkan `-` sampai segmentasi berikutnya.
+
+TTR menghitung sisa dari reported_date + SLA_MAPS[jenis_tiket] terhadap waktu
+laporan. Contoh: `Sisa: -0:42 | SLA 4H | 🔴 1 OVER SLA`.
+Tanggal reported_date memakai timestamp hasil normalisasi pipeline yang ada.
+Tanggal work log tanpa offset dianggap waktu WIB. Data kosong/invalid tidak
+menghasilkan angka SLA palsu.
+
+Blok YAML dikirim menggunakan HTML pre/code language-yaml dengan escaping.
+Incident panjang dipecah menjadi blok lengkap, tanpa memotong pasangan surrogate
+emoji. Pesan diberi jeda dan kegagalan rate limit mengikuti retry_after maksimal
+3 kali; kegagalan satu tujuan dicatat dan tidak menghentikan tujuan berikutnya.
+
+Uji tanpa Mongo/Telegram: `node --test tests/gamas.test.js`.
+
+Tes manual: kirim `/tesgamas` ke bot (mendukung `/tesgamas@NamaBot` di grup).
+Bot membalas bahwa laporan sedang diproses, menjalankan segmentasi terbaru,
+lalu mengirim laporan ke seluruh grup GAMAS aktif yang terdaftar lewat `/setgamas`.
+Command ini tidak mengubah jadwal cron dan tidak langsung mengirim ke chat pemanggil
+kecuali chat tersebut memang terdaftar sebagai grup GAMAS.

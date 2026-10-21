@@ -14,6 +14,7 @@ const { runTTR } = require("../modules/ttr/ttr.service");
 const { runTtrOfficer } = require("../modules/ttrOfficer/ttrOfficer.service");
 const { runTtrb2b } = require("../modules/ttrb2b/ttrb2b.service");
 const { runTtrHD } = require("../modules/ttrHD/ttrHD.service");
+const { runGamas } = require("../modules/gamas/gamas.service");
 const { findOfficer } = require("../modules/naker/naker.service");
 const { runPloting } = require("../modules/ploting/ploting.runner");
 const {
@@ -117,6 +118,11 @@ async function dispatch(ctx) {
     return testFfg(ctx, ffgTestCommand === '/tesffgremin' ? 'active' : 'hourly');
   }
 
+  if (/^\/setgamas(?:@[A-Za-z0-9_]+)?(?:\s|$)/i.test(text)) {
+    const { bindGamasGroup } = require("../modules/gamas/gamas.binding");
+    return bindGamasGroup(ctx);
+  }
+
   const isPrivateChat = ctx.chat?.type === "private";
   const isCommand = (name) => new RegExp(`^/${name}(?:@[A-Za-z0-9_]+)?(?:\\s|$)`).test(text);
 
@@ -218,6 +224,7 @@ async function dispatch(ctx) {
   }
 
   const manualReports = [
+    { matches: isCommand("tesgamas"), command: "/tesgamas", message: "Laporan GAMAS sedang diproses. Hasil dikirim ke grup GAMAS yang sudah terdaftar.", run: runGamas },
     { matches: text === "/testtr", command: "/testtr", message: "TTR sedang diproses 🚀", run: runTTR },
     { matches: text === "/tesploting", command: "/tesploting", message: "Ploting Test sedang diproses 🚀", run: runPloting },
     { matches: text.startsWith("/cekofficer"), command: "/cekofficer", message: "Officer sedang diproses 🚀", run: runTtrOfficer },

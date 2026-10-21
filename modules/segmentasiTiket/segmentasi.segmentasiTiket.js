@@ -5,6 +5,15 @@ const mongoose = require("mongoose");
 const segmentTicketSchema =
   new mongoose.Schema(
     {
+    region: String,
+    witel: String,
+    summary: String,
+    perangkat: String,
+    device_name: String,
+    incident_domain: String,
+    description_actual_solution: String,
+    worklog_summary: String,
+    last_update_worklog: mongoose.Schema.Types.Mixed,
       incident: {
         type: String,
         unique: true,

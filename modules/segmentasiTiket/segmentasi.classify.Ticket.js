@@ -158,6 +158,10 @@ function classifyTicket(ticket) {
       return "GAMAS_ODP";
     }
 
+    if (summaryUpper.includes("ODC")) {
+      return "GAMAS_ODC";
+    }
+
     return "GAMAS";
   }
 
