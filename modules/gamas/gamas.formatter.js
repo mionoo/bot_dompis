@@ -1,6 +1,8 @@
 const moment = require('moment-timezone');
-const { SLA_MAPS } = require('../branch/branch.data');
+const { SLA_MAPS, normalizeBranchName } = require('../branch/branch.data');
 const TYPES = ['GAMAS_FEEDER', 'GAMAS_GPON', 'GAMAS_DISTRIBUSI', 'GAMAS_ODP', 'GAMAS_ODC', 'GAMAS'];
+// BRANCH berasal dari mapping workzone -> groups pada pipeline segmentasi.
+const branchName = v => normalizeBranchName(String(v || '').replace(/^AREA\s*/i, '')) || '-';
 const value = v => v === null || v === undefined || v === '' ? '-' : String(v);
 function date(v) {
   if (!v) return '-';
@@ -26,22 +28,25 @@ function buildGamasMessages(tickets, at = new Date()) {
   }
   const rows = [...unique.values()];
   const messages = [`REPORT GAMAS\n${now.format('DD MMM YYYY')} | Update : ${now.format('HH.mm')} WIB\n\nAREA 3 : ${rows.length} Gamas`];
-  for (const type of TYPES) {
-    const selected = rows.filter(t => t.jenis_tiket === type);
-    if (!selected.length) continue;
-    messages.push(type);
-    const witels = [...new Set(selected.map(t => value(t.witel || t.BRANCH)))].sort();
-    for (const witel of witels) {
-      const group = selected.filter(t => value(t.witel || t.BRANCH) === witel).sort((a,b) => String(a.incident).localeCompare(String(b.incident)));
-      messages.push(`${witel}: ${group.length} Gamas`);
-      group.forEach((t,i) => messages.push(`#${i+1} ${t.incident}\n` + [
-        ['Regional', t.region], ['Witel', witel], ['Workzone', t.workzone],
-        ['Perangkat Terganggu', t.perangkat || t.device_name],
-        ['Incident Domain', t.incident_domain], ['Actual Solution', t.description_actual_solution],
-        ['Reported Date', date(t.reported_date)], ['Summary', t.summary],
-        ['Last Updated Work Log', t.worklog_summary], ['Last Work Log Date', date(t.last_update_worklog)],
-        ['TTR (jam)', ttr(t, now)],
-      ].map(([label,v]) => `${label.padEnd(22)}: ${value(v)}`).join('\n')));
+  const branches = [...new Set(rows.map(t => branchName(t.BRANCH)))].sort();
+  for (const branch of branches) {
+    const branchTickets = rows.filter(t => branchName(t.BRANCH) === branch);
+    messages.push(`${branch}: ${branchTickets.length} Gamas`);
+    let number = 0;
+    for (const type of TYPES) {
+      const group = branchTickets.filter(t => t.jenis_tiket === type)
+        .sort((a,b) => String(a.incident).localeCompare(String(b.incident)));
+      for (const t of group) {
+        const label = type.replace(/_/g, ' - ');
+        messages.push(`#${++number} ${t.incident} | ${label}\n` + [
+          ['BRANCH', branch], ['Workzone', t.workzone],
+          ['Perangkat Terganggu', t.perangkat || t.device_name],
+          ['Incident Domain', t.incident_domain], ['Actual Solution', t.description_actual_solution],
+          ['Reported Date', date(t.reported_date)], ['Summary', t.summary],
+          ['Last Updated Work Log', t.worklog_summary], ['Last Work Log Date', date(t.last_update_worklog)],
+          ['TTR (jam)', ttr(t, now)],
+        ].map(([label,v]) => `${label.padEnd(22)}: ${value(v)}`).join('\n'));
+      }
     }
   }
   return messages;
@@ -56,6 +61,6 @@ function yamlChunks(message, max = 3500) {
     chunk += char;
   }
   if (chunk) chunks.push(chunk);
-  return chunks.map(s => `<pre><code class="language-yaml">${escape(s)}</code></pre>`);
+  return chunks.map(s => `<pre>${escape(s)}</pre>`);
 }
 module.exports = { TYPES, buildGamasMessages, ttr, yamlChunks };

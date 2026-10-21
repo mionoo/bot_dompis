@@ -12,8 +12,8 @@ Tidak ada pengiriman langsung saat binding.
 
 Sumber laporan hanya `segment_tickets`, jenis GAMAS dan GAMAS_FEEDER/GPON/
 DISTRIBUSI/ODP/ODC, tanpa filter status tambahan. Incident dideduplikasi.
-Urutan pesan: pembuka, jenis GAMAS, Witel beserta jumlahnya, lalu satu pesan
-per incident. Grup kosong tetap mendapat pembuka dengan total 0.
+Urutan pesan: pembuka, BRANCH beserta jumlahnya, lalu satu pesan per incident.
+Judul incident menyertakan jenis GAMAS; detail memakai BRANCH tanpa Regional/Witel. Grup kosong tetap mendapat pembuka dengan total 0.
 
 Detail baru diteruskan oleh pipeline segmentasi: region, witel, perangkat,
 device_name, summary, incident_domain, description_actual_solution,
@@ -26,7 +26,7 @@ Tanggal reported_date memakai timestamp hasil normalisasi pipeline yang ada.
 Tanggal work log tanpa offset dianggap waktu WIB. Data kosong/invalid tidak
 menghasilkan angka SLA palsu.
 
-Blok YAML dikirim menggunakan HTML pre/code language-yaml dengan escaping.
+Blok monospace dikirim menggunakan HTML pre tanpa label bahasa, dengan escaping.
 Incident panjang dipecah menjadi blok lengkap, tanpa memotong pasangan surrogate
 emoji. Pesan diberi jeda dan kegagalan rate limit mengikuti retry_after maksimal
 3 kali; kegagalan satu tujuan dicatat dan tidak menghentikan tujuan berikutnya.
@@ -38,3 +38,8 @@ Bot membalas bahwa laporan sedang diproses, menjalankan segmentasi terbaru,
 lalu mengirim laporan ke seluruh grup GAMAS aktif yang terdaftar lewat `/setgamas`.
 Command ini tidak mengubah jadwal cron dan tidak langsung mengirim ke chat pemanggil
 kecuali chat tersebut memang terdaftar sebagai grup GAMAS.
+
+BRANCH mengikuti field `BRANCH` hasil mapping workzone ke master `groups` pada
+pipeline segmentasi, sama dengan modul lainnya. Prefix AREA/BRANCH dibersihkan
+dan nama dinormalkan ke huruf besar untuk pengelompokan dan detail. BRANCH kosong
+ditampilkan sebagai `-`, tanpa fallback ke witel atau summary; tiket tetap dihitung.
