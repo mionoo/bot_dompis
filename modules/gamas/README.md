@@ -47,3 +47,9 @@ BRANCH mengikuti field `BRANCH` hasil mapping workzone ke master `groups` pada
 pipeline segmentasi, sama dengan modul lainnya. Prefix AREA/BRANCH dibersihkan
 dan nama dinormalkan ke huruf besar untuk pengelompokan dan detail. BRANCH kosong
 ditampilkan sebagai `-`, tanpa fallback ke witel atau summary; tiket tetap dihitung.
+
+Admin grup dapat menjalankan `/hapusgamas` (atau dengan mention bot) untuk
+menghapus binding GAMAS hanya pada grup/topik saat ini. Command tanpa topik
+tidak menghapus binding topik lainnya. Binding modul lain tidak berubah.
+Gunakan `/setgamas` untuk mendaftarkan kembali. Laporan yang sudah dalam proses
+pengiriman dapat tetap selesai karena daftar tujuan sudah dimuat sebelumnya.

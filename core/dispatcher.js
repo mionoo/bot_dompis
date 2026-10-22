@@ -123,6 +123,11 @@ async function dispatch(ctx) {
     return bindGamasGroup(ctx);
   }
 
+  if (/^\/hapusgamas(?:@[A-Za-z0-9_]+)?(?:\s|$)/i.test(text)) {
+    const { unbindGamasGroup } = require("../modules/gamas/gamas.unbind");
+    return unbindGamasGroup(ctx);
+  }
+
   if (/^\/hapusgrup(?:@[A-Za-z0-9_]+)?(?:\s|$)/i.test(text)) {
     const { unbindGroup } = require("../modules/group/group.unbind");
     return unbindGroup(ctx);
