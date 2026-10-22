@@ -1,5 +1,5 @@
 const moment = require('moment-timezone');
-const { SLA_MAPS, normalizeBranchName } = require('../branch/branch.data');
+const { normalizeBranchName } = require('../branch/branch.data');
 const TYPES = ['GAMAS_FEEDER', 'GAMAS_GPON', 'GAMAS_DISTRIBUSI', 'GAMAS_ODP', 'GAMAS_ODC', 'GAMAS'];
 // BRANCH berasal dari mapping workzone -> groups pada pipeline segmentasi.
 const branchName = v => normalizeBranchName(String(v || '').replace(/^AREA\s*/i, '')) || '-';
@@ -10,21 +10,13 @@ function date(v) {
     ? moment.tz(v, 'Asia/Jakarta') : moment(v).tz('Asia/Jakarta');
   return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss [WIB]') : '-';
 }
-function slaDeadline(ticket) {
-  const sla = SLA_MAPS[ticket.jenis_tiket];
-  if (!ticket.reported_date || !sla || !moment(ticket.reported_date).isValid()) return null;
-  return moment(ticket.reported_date).add(sla, 'hours');
-}
 function ttr(ticket, now) {
-  const deadline = slaDeadline(ticket);
-  if (!deadline) return 'SLA tidak tersedia';
-  const remaining = deadline.valueOf() - now.valueOf();
-  const minutes = Math.floor(Math.abs(remaining) / 60000);
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  const duration = [hours ? `${hours} jam` : '', rest || !hours ? `${rest} menit` : ''].filter(Boolean).join(' ');
-  const status = remaining <= 0 ? 'OVER SLA 🔴' : remaining <= 3600000 ? 'CRITICAL 🟠' : remaining <= 5400000 ? 'WARNING 🟡' : 'SAFE 🟢';
-  return `${remaining <= 0 ? 'Lewat' : 'Sisa'} ${duration} | ${status}`;
+  if (!ticket.reported_date) return '-';
+  const reported = typeof ticket.reported_date === 'string'
+    ? moment(ticket.reported_date, moment.ISO_8601, true) : moment(ticket.reported_date);
+  if (!reported.isValid()) return '-';
+  const hours = (now.valueOf() - reported.valueOf()) / 3600000;
+  return hours < 0 || !Number.isFinite(hours) ? '-' : hours.toFixed(2);
 }
 function buildGamasMessages(tickets, at = new Date()) {
   const now = moment(at).tz('Asia/Jakarta').locale('en');
@@ -51,8 +43,7 @@ function buildGamasMessages(tickets, at = new Date()) {
           ['Summary', t.summary],
           ['Last Updated Work Log', t.worklog_summary], ['Last Work Log Date', date(t.last_update_worklog)],
           ['Reported Date', date(t.reported_date)],
-          ['Batas SLA', slaDeadline(t) ? `${date(slaDeadline(t).toDate())} | SLA ${SLA_MAPS[t.jenis_tiket]}H` : '-'],
-          ['Status SLA', ttr(t, now)],
+          ['TTR (jam)', ttr(t, now)],
         ].map(([label,v]) => `${label.padEnd(22)}: ${value(v)}`).join('\n'));
       }
     }

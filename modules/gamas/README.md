@@ -22,13 +22,13 @@ device_name, summary, incident_domain, description_actual_solution,
 worklog_summary, last_update_worklog. Dokumen lama yang belum mempunyai field
 tersebut menampilkan `-` sampai segmentasi berikutnya.
 
-Batas SLA dihitung dari reported_date + SLA_MAPS[jenis_tiket]. Setelah work log,
-laporan menampilkan Reported Date, Batas SLA (beserta target jam), dan Status SLA.
-Contoh: `Sisa 2 jam 15 menit | SAFE 🟢` atau `Lewat 42 menit | OVER SLA 🔴`.
-Tanggal ditampilkan konsisten dalam WIB. Ambang WARNING/CRITICAL tetap sama.
+TTR (jam) adalah umur tiket saat laporan dibuat: (waktu laporan - reported_date)
+dalam jam desimal dengan dua angka di belakang titik. Contoh `14.75` berarti
+14 jam 45 menit. Baris Reported Date dan TTR berada setelah work log, tanpa
+Batas SLA atau Status SLA. Semua tiket dalam satu laporan memakai waktu acuan sama.
 Tanggal reported_date memakai timestamp hasil normalisasi pipeline yang ada.
-Tanggal work log tanpa offset dianggap waktu WIB. Data kosong/invalid tidak
-menghasilkan angka SLA palsu.
+Tanggal work log tanpa offset dianggap waktu WIB. Tanggal kosong, invalid, atau
+reported_date di masa depan menghasilkan TTR `-`.
 
 Blok monospace dikirim menggunakan HTML pre tanpa label bahasa, dengan escaping.
 Incident panjang dipecah menjadi blok lengkap, tanpa memotong pasangan surrogate
