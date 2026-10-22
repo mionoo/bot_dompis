@@ -57,3 +57,11 @@ Karena tidak ada proses manager (pm2/systemd) yang terdeteksi di server saat ini
 ## Riwayat perubahan
 
 Riwayat lengkap perubahan (termasuk kode asli sebelum dirapikan) ada di `git log`. Commit pertama (`chore: baseline snapshot...`) adalah kondisi kode sebelum sesi cleanup ini, jadi bisa dibandingkan kapan saja dengan `git diff <hash-baseline> HEAD`.
+
+## Menghapus binding grup/topik
+
+Admin grup dapat menjalankan `/hapusgrup` tanpa argumen di grup/topik tujuan.
+Semua binding ORDER/REPORT/KAWAL untuk ID grup dan topik tersebut dihapus.
+Di grup biasa hanya binding grup tersebut; di luar topik forum hanya binding
+utama, tanpa menghapus topik lain. Mendukung mention bot. Untuk mendaftarkan
+kembali gunakan `/set`. Binding GAMAS/B2B/HD/FFG tidak diubah.

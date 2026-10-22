@@ -123,6 +123,11 @@ async function dispatch(ctx) {
     return bindGamasGroup(ctx);
   }
 
+  if (/^\/hapusgrup(?:@[A-Za-z0-9_]+)?(?:\s|$)/i.test(text)) {
+    const { unbindGroup } = require("../modules/group/group.unbind");
+    return unbindGroup(ctx);
+  }
+
   const isPrivateChat = ctx.chat?.type === "private";
   const isCommand = (name) => new RegExp(`^/${name}(?:@[A-Za-z0-9_]+)?(?:\\s|$)`).test(text);
 
