@@ -15,6 +15,6 @@ async function bindGamasGroup(ctx) {
     BOT_ID: String(ctx.botInfo.id),
     STATUS: 'ACTIVE',
   } }, { upsert: true, new: true });
-  return ctx.reply('✅ Grup GAMAS terdaftar. Laporan seluruh AREA 3 dikirim tiap 15 menit pukul 08.00–21.45 dan tiap jam pukul 22.00–07.00 WIB.');
+  return ctx.reply('✅ Grup GAMAS terdaftar. Laporan seluruh AREA 3 dikirim setiap jam pada menit 00 selama 24 jam WIB.');
 }
 module.exports = { bindGamasGroup };

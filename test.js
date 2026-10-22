@@ -20,7 +20,7 @@ const SCHEDULER_TIMEZONE = "Asia/Jakarta";
 let isSchedulerRunning = false;
 let queuedJob = null;
 
-async function runSchedulerJob({ label, includeTTR }) {
+async function runSchedulerJob({ label, includeTTR, includeGamas = false }) {
   const startedAt = Date.now();
   isSchedulerRunning = true;
 
@@ -44,8 +44,10 @@ async function runSchedulerJob({ label, includeTTR }) {
     await runTtrHD();
     console.log("monitoring HD done");
 
-    await runGamas();
-    console.log("report gamas done");
+    if (includeGamas) {
+      await runGamas();
+      console.log("report gamas done");
+    }
 
     await clearSegmentTickets();
     await clearAllTickets();
@@ -71,7 +73,8 @@ async function runSchedulerJob({ label, includeTTR }) {
 
 function requestSchedulerJob(job) {
   if (isSchedulerRunning) {
-    queuedJob = job;
+    // Pertahankan laporan jam penuh jika antrean diganti job menit 15/30/45.
+    queuedJob = { ...job, includeGamas: Boolean(job.includeGamas || queuedJob?.includeGamas) };
     console.warn(
       `⏳ Scheduler ${job.label} diantrikan karena job lain masih berjalan.`,
     );
@@ -82,11 +85,13 @@ function requestSchedulerJob(job) {
 }
 
 const dayJob = { label: "SIANG", includeTTR: true };
-const nightJob = { label: "MALAM", includeTTR: true };
+const nightJob = { label: "MALAM", includeTTR: true, includeGamas: true };
 const cronOptions = { timezone: SCHEDULER_TIMEZONE };
 
-// Setiap 15 menit pada pukul 08:00 s.d. 21:45.
-cron.schedule("*/15 8-21 * * *", () => requestSchedulerJob(dayJob), cronOptions);
+// Setiap 15 menit pada pukul 08:00 s.d. 21:45; GAMAS hanya jadwal menit 00.
+// Gunakan waktu jadwal cron, bukan waktu ketika proses/antrean akhirnya berjalan.
+// Menit UTC sama dengan WIB (UTC+7).
+cron.schedule("*/15 8-21 * * *", (context) => requestSchedulerJob({ ...dayJob, includeGamas: context.date.getUTCMinutes() === 0 }), cronOptions);
 
 // Setiap jam pada pukul 22:00, 23:00, dan 00:00 s.d. 07:00.
 cron.schedule("0 22-23,0-7 * * *", () => requestSchedulerJob(nightJob), cronOptions);

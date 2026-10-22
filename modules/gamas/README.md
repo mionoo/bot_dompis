@@ -6,8 +6,10 @@ menjalankan `/setgamas` di grup atau topik tujuan. Binding disimpan di collectio
 GAMAS AREA 3; tidak difilter berdasarkan alokasi branch bot.
 
 Scheduler `test.js` memanggil `runGamas()` setelah segmentasi dan sebelum koleksi
-sementara dibersihkan: setiap 15 menit pukul 08.00–21.45 dan setiap jam pukul
-22.00–07.00, zona Asia/Jakarta. Restart proses bot setelah memasang perubahan.
+sementara dibersihkan, hanya pada jadwal menit 00 setiap jam selama 24 jam,
+zona Asia/Jakarta. Modul lain tetap mengikuti jadwal 15 menit/jam yang ada.
+Penanda pengiriman GAMAS mengikuti waktu jadwal cron dan dipertahankan saat
+antrean digantikan job terbaru, sehingga tidak hilang bila proses terlambat. Restart proses bot setelah memasang perubahan.
 Tidak ada pengiriman langsung saat binding.
 
 Sumber laporan hanya `segment_tickets`, jenis GAMAS dan GAMAS_FEEDER/GPON/
