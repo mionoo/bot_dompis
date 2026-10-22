@@ -20,8 +20,10 @@ device_name, summary, incident_domain, description_actual_solution,
 worklog_summary, last_update_worklog. Dokumen lama yang belum mempunyai field
 tersebut menampilkan `-` sampai segmentasi berikutnya.
 
-TTR menghitung sisa dari reported_date + SLA_MAPS[jenis_tiket] terhadap waktu
-laporan. Contoh: `Sisa: -0:42 | SLA 4H | 🔴 1 OVER SLA`.
+Batas SLA dihitung dari reported_date + SLA_MAPS[jenis_tiket]. Setelah work log,
+laporan menampilkan Reported Date, Batas SLA (beserta target jam), dan Status SLA.
+Contoh: `Sisa 2 jam 15 menit | SAFE 🟢` atau `Lewat 42 menit | OVER SLA 🔴`.
+Tanggal ditampilkan konsisten dalam WIB. Ambang WARNING/CRITICAL tetap sama.
 Tanggal reported_date memakai timestamp hasil normalisasi pipeline yang ada.
 Tanggal work log tanpa offset dianggap waktu WIB. Data kosong/invalid tidak
 menghasilkan angka SLA palsu.

@@ -8,17 +8,23 @@ function date(v) {
   if (!v) return '-';
   const parsed = typeof v === 'string' && !/(Z|[+-]\d\d:\d\d)$/.test(v)
     ? moment.tz(v, 'Asia/Jakarta') : moment(v).tz('Asia/Jakarta');
-  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : '-';
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss [WIB]') : '-';
+}
+function slaDeadline(ticket) {
+  const sla = SLA_MAPS[ticket.jenis_tiket];
+  if (!ticket.reported_date || !sla || !moment(ticket.reported_date).isValid()) return null;
+  return moment(ticket.reported_date).add(sla, 'hours');
 }
 function ttr(ticket, now) {
-  const sla = SLA_MAPS[ticket.jenis_tiket];
-  const reported = ticket.reported_date;
-  if (!reported || !sla || !moment(reported).isValid()) return 'Sisa: - | SLA tidak tersedia';
-  const remaining = moment(reported).valueOf() + sla * 3600000 - now.valueOf();
+  const deadline = slaDeadline(ticket);
+  if (!deadline) return 'SLA tidak tersedia';
+  const remaining = deadline.valueOf() - now.valueOf();
   const minutes = Math.floor(Math.abs(remaining) / 60000);
-  const time = `${remaining < 0 ? '-' : ''}${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
-  const status = remaining <= 0 ? '🔴 1 OVER SLA' : remaining <= 3600000 ? '🟠 1 CRITICAL' : remaining <= 5400000 ? '🟡 1 WARNING' : '🟢 1 SAFE';
-  return `Sisa: ${time} | SLA ${sla}H | ${status}`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const duration = [hours ? `${hours} jam` : '', rest || !hours ? `${rest} menit` : ''].filter(Boolean).join(' ');
+  const status = remaining <= 0 ? 'OVER SLA 🔴' : remaining <= 3600000 ? 'CRITICAL 🟠' : remaining <= 5400000 ? 'WARNING 🟡' : 'SAFE 🟢';
+  return `${remaining <= 0 ? 'Lewat' : 'Sisa'} ${duration} | ${status}`;
 }
 function buildGamasMessages(tickets, at = new Date()) {
   const now = moment(at).tz('Asia/Jakarta').locale('en');
@@ -42,9 +48,11 @@ function buildGamasMessages(tickets, at = new Date()) {
           ['BRANCH', branch], ['Workzone', t.workzone],
           ['Perangkat Terganggu', t.perangkat || t.device_name],
           ['Incident Domain', t.incident_domain], ['Actual Solution', t.description_actual_solution],
-          ['Reported Date', date(t.reported_date)], ['Summary', t.summary],
+          ['Summary', t.summary],
           ['Last Updated Work Log', t.worklog_summary], ['Last Work Log Date', date(t.last_update_worklog)],
-          ['TTR (jam)', ttr(t, now)],
+          ['Reported Date', date(t.reported_date)],
+          ['Batas SLA', slaDeadline(t) ? `${date(slaDeadline(t).toDate())} | SLA ${SLA_MAPS[t.jenis_tiket]}H` : '-'],
+          ['Status SLA', ttr(t, now)],
         ].map(([label,v]) => `${label.padEnd(22)}: ${value(v)}`).join('\n'));
       }
     }
