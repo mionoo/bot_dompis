@@ -1,3 +1,4 @@
+const { reportQueue } = require('./reportQueue');
 // Keep long-running reports outside Telegraf's per-update handler timeout.
 async function startManualReport(ctx, { command, message, prepare, run }, options = {}) {
   const logger = options.logger || console;
@@ -5,9 +6,8 @@ async function startManualReport(ctx, { command, message, prepare, run }, option
   await ctx.reply(message);
   schedule(() => {
     const startedAt = Date.now();
-    Promise.resolve()
-      .then(() => prepare())
-      .then(() => run(ctx))
+    reportQueue.enqueue(`manual:${command}:${ctx.botInfo?.id || ctx.me}:${ctx.chat?.id}:${ctx.message?.message_id}`,
+      command, async () => { await prepare(); return run(ctx); })
       .then(() => logger.log(`✅ Proses manual ${command} selesai | ${Math.round((Date.now() - startedAt) / 1000)} detik`))
       .catch(error => {
         const code = String(error?.code || error?.name || 'ERROR');

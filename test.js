@@ -12,91 +12,20 @@ const {
   clearAllTickets,
 } = require("./modules/segmentasiTiket/segmentasi.clear");
 
-const SCHEDULER_TIMEZONE = "Asia/Jakarta";
+const { runFfg } = require("./modules/ffg/ffg.service");
+const { reportQueue } = require("./core/reportQueue");
+const { planReports, createReportScheduler } = require("./core/reportSchedule");
+const scheduler = createReportScheduler({
+  segment: jalanSegmentasi, ttr: runTTR, officer: runTtrOfficer,
+  ploting: runPloting, b2b: runTtrb2b, hd: runTtrHD, gamas: runGamas,
+  clearSegment: clearSegmentTickets, clearAll: clearAllTickets, ffg: runFfg,
+}, reportQueue);
 
-// Kedua jadwal memakai data segmentasi dan koleksi yang sama. Satu mutex
-// bersama mencegah job 21:45 dan 22:00 berjalan paralel. Jika ada jadwal
-// baru saat proses masih aktif, hanya job terbaru yang diantrikan.
-let isSchedulerRunning = false;
-let queuedJob = null;
+// Satu cron sepanjang hari. Malam di luar menit 00 hanya menjalankan FFG.
+cron.schedule("*/15 * * * *", context => {
+  const job = planReports(context.date, process.env.FFG_ENABLED === "1");
+  if (!job.operational && !job.ffgActive) return;
+  void scheduler.requestSchedulerJob(job).catch(() => console.error("Scheduler gagal diproses"));
+}, { timezone: "Asia/Jakarta" });
 
-async function runSchedulerJob({ label, includeTTR, includeGamas = false }) {
-  const startedAt = Date.now();
-  isSchedulerRunning = true;
-
-  console.log(`▶️ Scheduler ${label} dimulai`);
-
-  try {
-    await jalanSegmentasi();
-    console.log("segmentasi done");
-
-    if (includeTTR) {
-      await runTTR();
-      console.log("ttr grup done");
-    }
-
-    await runTtrOfficer();
-    console.log("remind officer done");
-    await runPloting();
-    console.log("remind plotingan teknisi done");
-    await runTtrb2b();
-    console.log("ttr b2b done");
-    await runTtrHD();
-    console.log("monitoring HD done");
-
-    if (includeGamas) {
-      await runGamas();
-      console.log("report gamas done");
-    }
-
-    await clearSegmentTickets();
-    await clearAllTickets();
-    console.log(`✅ Scheduler ${label} selesai`);
-  } catch (err) {
-    console.error(`❌ Error Scheduler ${label}:`, err.message);
-  } finally {
-    const durationSeconds = Math.round((Date.now() - startedAt) / 1000);
-    console.log(`⏱️ Scheduler ${label}: ${durationSeconds} detik`);
-
-    isSchedulerRunning = false;
-
-    const nextJob = queuedJob;
-    queuedJob = null;
-    if (nextJob) {
-      console.log(
-        `↪️ Menjalankan antrean Scheduler ${nextJob.label} setelah job sebelumnya selesai.`,
-      );
-      void runSchedulerJob(nextJob);
-    }
-  }
-}
-
-function requestSchedulerJob(job) {
-  if (isSchedulerRunning) {
-    // Pertahankan laporan jam penuh jika antrean diganti job menit 15/30/45.
-    queuedJob = { ...job, includeGamas: Boolean(job.includeGamas || queuedJob?.includeGamas) };
-    console.warn(
-      `⏳ Scheduler ${job.label} diantrikan karena job lain masih berjalan.`,
-    );
-    return;
-  }
-
-  void runSchedulerJob(job);
-}
-
-const dayJob = { label: "SIANG", includeTTR: true };
-const nightJob = { label: "MALAM", includeTTR: true, includeGamas: true };
-const cronOptions = { timezone: SCHEDULER_TIMEZONE };
-
-// Setiap 15 menit pada pukul 08:00 s.d. 21:45; GAMAS hanya jadwal menit 00.
-// Gunakan waktu jadwal cron, bukan waktu ketika proses/antrean akhirnya berjalan.
-// Menit UTC sama dengan WIB (UTC+7).
-cron.schedule("*/15 8-21 * * *", (context) => requestSchedulerJob({ ...dayJob, includeGamas: context.date.getUTCMinutes() === 0 }), cronOptions);
-
-// Setiap jam pada pukul 22:00, 23:00, dan 00:00 s.d. 07:00.
-cron.schedule("0 22-23,0-7 * * *", () => requestSchedulerJob(nightJob), cronOptions);
-
-module.exports = {
-  requestSchedulerJob,
-  runSchedulerJob,
-};
+module.exports = scheduler;

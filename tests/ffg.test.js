@@ -344,6 +344,8 @@ test('manual FFG commands are private-only and pass a separate request identity'
   context.chat.type = 'private';
   await testFfg(context, 'active', runner);
   await testFfg(context, 'hourly', runner);
+  await require('../core/reportQueue').reportQueue.idle();
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls.length, 2); assert.equal(calls[0][0], 'active'); assert.equal(calls[1][0], 'hourly');
   assert.equal(calls[0][2].trigger, 'manual'); assert.equal(calls[0][2].requestId, '22:1:33');
   assert.ok(replies.at(-1).includes('Berhasil: 2 tujuan'));

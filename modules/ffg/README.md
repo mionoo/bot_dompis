@@ -52,6 +52,27 @@ oleh `test.js`.
 
 ## Jadwal notifikasi dan SLA
 
+Seluruh laporan otomatis dikelola oleh satu cron di `test.js`, setiap 15 menit
+dalam WIB. Cron FFG terpisah tidak digunakan. Pada pukul 08:00–21:45, laporan
+operasional berjalan setiap 15 menit. Pada pukul 22:00–07:00, operasional tetap
+setiap jam; menit 15/30/45 hanya menjalankan FFG OPEN. GAMAS tetap setiap jam.
+
+Urutan job: segmentasi, TTR, Officer, Ploting, B2B, HD, GAMAS jika dijadwalkan,
+pembersihan data operasional, FFG OPEN, lalu rekap FFG jika jadwal menit 00.
+Pekerjaan manual juga memakai antrean yang sama dan langsung memberikan balasan
+masuk antrean, sehingga tidak menunggu proses panjang di handler Telegram.
+
+Waktu acuan laporan dan filter hari tetap memakai waktu jadwal/permintaan awal,
+sedangkan kesegaran sinkronisasi diperiksa saat pekerjaan benar-benar dijalankan.
+Kegagalan operasional tidak membatalkan pemeriksaan FFG; kegagalan satu jenis
+laporan FFG tidak menghalangi jenis berikutnya. Job berbeda tetap disimpan dalam
+urutan FIFO, tidak mengganti rekap per jam dengan laporan seperempat jam berikutnya.
+
+Antrean berlaku dalam satu proses `bot25` dan tidak persisten. Jangan menjalankan
+beberapa instance scheduler. Restart dapat menghilangkan pekerjaan yang masih
+mengantre. Antrean mencegah benturan antarjob laporan, tetapi tidak menjamin
+koneksi Telegram bebas timeout atau mengunci penerimaan webhook dari proses lain.
+
 - Setiap 15 menit sepanjang hari: tiket FFG aktif dengan `status_validasi=OPEN`
   dari seluruh tanggal laporan, beserta SLA, tanpa Excel.
   Format mengikuti TTR HD: kelompok HSA, lalu segmen dan tahap SLA; setiap baris

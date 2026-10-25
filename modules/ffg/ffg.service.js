@@ -44,9 +44,10 @@ async function runFfg(mode, now = new Date(), runtime = {}) {
     const code = error?.response?.error_code ?? error?.code ?? error?.cause?.code ?? error?.name;
     return typeof code === 'number' ? String(code) : /^[A-Za-z0-9_]{1,64}$/.test(String(code)) ? String(code) : 'ERROR';
   };
+  const checkedAt = runtime.checkedAt || now;
   const sync = await State.findById("sync").lean();
   const maxAge = Number(process.env.FFG_MAX_SYNC_AGE_SECONDS || 600) * 1000;
-  if (!sync?.completed_at || now - sync.completed_at > maxAge) {
+  if (!sync?.completed_at || checkedAt - sync.completed_at > maxAge) {
     console.warn("FFG report skipped: source synchronization is not fresh");
     summary.reason = 'STALE_SYNC';
     return summary;
@@ -66,7 +67,7 @@ async function runFfg(mode, now = new Date(), runtime = {}) {
       t.synced_at &&
       // CLOSE snapshots are final and remain eligible for the hourly report.
       ((mode === "hourly" && t.status_validasi === "CLOSE") ||
-        now - t.synced_at <= maxAge) &&
+        checkedAt - t.synced_at <= maxAge) &&
       (mode === "hourly" || (t.status_validasi === "OPEN" && active(t))),
   );
   const groups = await FfgGroups.find({ STATUS: "ACTIVE" }).lean();

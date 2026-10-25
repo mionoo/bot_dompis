@@ -48,7 +48,6 @@ app.use('/webhook', webhookRoute)
 require('./adapters/telegram')
 //require('./adapters/whatsapp')
 require('./test') // 🔥 scheduler TTR
-require('./modules/ffg/ffg.scheduler').startFfgScheduler()
 
 app.listen(process.env.PORT, () => {
   console.log(`Server jalan di port ${process.env.PORT}`)
