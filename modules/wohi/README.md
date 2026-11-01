@@ -5,6 +5,14 @@ Mengambil semua tiket `piloting_tickets` yang dibuka hari ini berdasarkan
 `CLOSED` (setelah trim dan normalisasi kapitalisasi) dihitung CLOSE; seluruh
 status lain dihitung OPEN. Tidak ada perhitungan SLA.
 
+Ringkasan dipisah berdasarkan source_ticket: CUSTOMER menjadi REGULER,
+PROACTIVE menjadi SQM, dan GAMAS menjadi GAMAS. Kapitalisasi dan spasi tepi
+dinormalisasi. Ketiga kelompok selalu ditampilkan, termasuk jika total nol.
+Sumber lain/kosong masuk SUMBER LAINNYA dan ditampilkan jika ada tiketnya.
+Masing-masing kelompok dirinci per kategori pelanggan dengan OPEN/CLOSE/TOTAL,
+diakhiri total keseluruhan. Kelompok sumber REGULER berbeda dari kategori
+pelanggan REGULER. Tiket hanya masuk satu kelompok sehingga tidak dihitung ganda.
+
 Kategori memakai fungsi classifyTicket existing, dengan masukan segmen/jenis
 pelanggan/layanan yang dinormalisasi. Kategori yang tidak dikenali masuk LAINNYA,
 bukan dihapus. Workzone dipetakan ke branch melalui collection groups existing.
@@ -27,7 +35,9 @@ Data tanpa pemetaan branch dicatat dan jumlahnya dibalas pada tes manual.
 
 Ringkasan Telegram: Kategori | OPEN | CLOSE | TOTAL. Excel memuat tab Ringkasan
 dan Semua Tiket, termasuk kategori, bucket OPEN/CLOSE, status asli, dan seluruh
-kolom sumber. Ringkasan dan detail berasal dari hasil SELECT yang sama agar
+kolom sumber. Ringkasan Excel memuat kelompok sumber dan subtotal masing-masing;
+detail menyertakan source_ticket asli dan WOHI_SOURCE_GROUP.
+Ringkasan dan detail berasal dari hasil SELECT yang sama agar
 angka konsisten. Nomor service disimpan sebagai teks. Semua string Excel adalah
 nilai literal, bukan formula. Tidak menyimpan salinan tiket permanen di MongoDB.
 

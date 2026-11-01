@@ -2,6 +2,10 @@ const moment = require('moment-timezone');
 const { classifyTicket } = require('../segmentasiTiket/segmentasi.classify.Ticket');
 const normalize = value => String(value || '').trim().toUpperCase();
 const normalizeBranch = value => normalize(value).replace(/^(AREA|BRANCH)\s+/, '');
+const SOURCE_GROUPS = ['REGULER', 'SQM', 'GAMAS', 'SUMBER LAINNYA'];
+function sourceGroup(source) {
+  return ({ CUSTOMER: 'REGULER', PROACTIVE: 'SQM', GAMAS: 'GAMAS' })[normalize(source)] || 'SUMBER LAINNYA';
+}
 function dayBounds(now) {
   const start = moment(now).tz('Asia/Jakarta').startOf('day');
   return { start: start.format('YYYY-MM-DD HH:mm:ss'),
@@ -22,6 +26,7 @@ function prepareTickets(rows, groups) {
     if (row.service_no != null && typeof row.service_no !== 'string') throw new Error('WOHI_SERVICE_MUST_BE_TEXT');
     const group = mapping.get(normalize(row.workzone));
     const ticket = { ...row, incident, WOHI_CATEGORY: categorize(row),
+      WOHI_SOURCE_GROUP: sourceGroup(row.source_ticket),
       WOHI_STATUS: normalize(row.status) === 'CLOSED' ? 'CLOSE' : 'OPEN',
       WOHI_BRANCH: normalizeBranch(group?.BRANCH), WOHI_SERVICE_AREA: normalize(group?.SERVICE_AREA),
       WOHI_ZONEBOT: group?.ZONEBOT || null };
@@ -48,14 +53,26 @@ function reportMessages(branch, tickets, now) {
   const clean = value => String(value).replace(/[\r\n]+/g, ' ').slice(0, 100);
   const header = `📊 LAPORAN WO HI\n🏢 Branch: ${clean(branch)}\n📅 ` +
     moment(now).tz('Asia/Jakarta').format('DD/MM/YYYY HH:mm [WIB]') + '\n\n';
-  const rows = summary.categories.map(row => `${clean(row.category)} | ${row.open} | ${row.close} | ${row.total}\n`);
-  rows.push(`\nTOTAL | ${summary.total.open} | ${summary.total.close} | ${summary.total.total}`);
-  const chunks = []; let chunk = header + 'Kategori | OPEN | CLOSE | TOTAL\n';
-  for (const line of rows) {
-    if (chunk.length + line.length > 3800) { chunks.push(chunk); chunk = header + 'Kategori | OPEN | CLOSE | TOTAL\n'; }
-    chunk += line;
+  const chunks = []; let chunk = header;
+  for (const group of summarizeSources(tickets)) {
+    const section = `📋 ${group.name}\nKategori | OPEN | CLOSE | TOTAL\n`;
+    const rows = group.categories.map(row => `${clean(row.category)} | ${row.open} | ${row.close} | ${row.total}\n`);
+    rows.push(`TOTAL | ${group.total.open} | ${group.total.close} | ${group.total.total}\n\n`);
+    let prefix = section;
+    for (const line of rows) {
+      if (chunk.length + prefix.length + line.length > 3800) { chunks.push(chunk); chunk = header; prefix = section; }
+      chunk += prefix + line; prefix = '';
+    }
   }
+  const overall = `TOTAL KESELURUHAN | ${summary.total.open} | ${summary.total.close} | ${summary.total.total}`;
+  if (chunk.length + overall.length > 3800) { chunks.push(chunk); chunk = header; }
+  chunk += overall;
   chunks.push(chunk);
   return chunks;
 }
-module.exports = { dayBounds, normalize, normalizeBranch, categorize, prepareTickets, summarize, reportMessages };
+function summarizeSources(tickets) {
+  return SOURCE_GROUPS.map(name => ({ name, ...summarize(tickets.filter(ticket => sourceGroup(ticket.source_ticket) === name)) }))
+    .filter(group => group.name !== 'SUMBER LAINNYA' || group.total.total > 0);
+}
+module.exports = { dayBounds, normalize, normalizeBranch, categorize, prepareTickets, summarize, reportMessages,
+  sourceGroup, summarizeSources };

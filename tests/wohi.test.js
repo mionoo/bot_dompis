@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const ExcelJS = require('exceljs');
-const { dayBounds, prepareTickets, summarize, reportMessages } = require('../modules/wohi/wohi.logic');
+const { dayBounds, prepareTickets, summarize, reportMessages, summarizeSources, sourceGroup } = require('../modules/wohi/wohi.logic');
 const { buildWohiExcel } = require('../modules/wohi/wohi.excel');
 const { createWohiSource } = require('../modules/wohi/wohi.source');
 const { WohiGroups, WohiDeliveries } = require('../modules/wohi/wohi.models');
@@ -25,6 +25,51 @@ test('WO HI day bounds respect WIB at UTC date boundary', () => {
   assert.deepEqual(dayBounds(new Date('2026-11-01T17:00:00Z')), {
     start: '2026-11-02 00:00:00', end: '2026-11-03 00:00:00',
   });
+});
+test('source groups keep customer categories separate and totals reconcile without duplicates', () => {
+  const fixtures = [
+    { ...rows[0], source_ticket: ' customer ', customer_type: 'REGULER' },
+    { ...rows[1], source_ticket: 'proactive' },
+    { ...rows[2], source_ticket: 'GAMAS' },
+    { ...rows[2], incident: 'INC4', source_ticket: '' },
+    { ...rows[2], incident: 'INC5', source_ticket: 'OTHER', status: 'CLOSED' },
+  ];
+  const tickets = prepareTickets(fixtures, mapping);
+  const groups = summarizeSources(tickets);
+  assert.deepEqual(groups.map(g => g.name), ['REGULER', 'SQM', 'GAMAS', 'SUMBER LAINNYA']);
+  assert.deepEqual(groups.map(g => g.total.total), [1, 1, 1, 2]);
+  assert.equal(groups[0].categories[0].category, 'REGULER');
+  assert.equal(groups[0].total.close, 1); assert.equal(groups[1].total.open, 1);
+  assert.equal(groups.reduce((n, group) => n + group.total.total, 0), tickets.length);
+  assert.equal(sourceGroup(' PROACTIVE '), 'SQM');
+  const text = reportMessages('SURABAYA', tickets, now).join('');
+  for (const group of groups) assert.ok(text.includes(`📋 ${group.name}\n`));
+  assert.ok(text.includes('TOTAL KESELURUHAN | 3 | 2 | 5'));
+  const empty = summarizeSources([]);
+  assert.deepEqual(empty.map(g => g.name), ['REGULER', 'SQM', 'GAMAS']);
+  assert.ok(empty.every(g => g.total.total === 0));
+});
+test('grouped Excel agrees with detail rows and preserves original source_ticket', async () => {
+  const tickets = prepareTickets(rows.map((row, i) => ({ ...row,
+    source_ticket: ['CUSTOMER', 'PROACTIVE', 'GAMAS'][i] })), mapping);
+  const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(await buildWohiExcel(tickets));
+  const sheet = workbook.getWorksheet('Ringkasan');
+  const subtotals = [];
+  sheet.eachRow((row, number) => { if (number > 1 && row.getCell(2).value === 'TOTAL')
+    subtotals.push([row.getCell(1).value, row.getCell(5).value]); });
+  assert.deepEqual(subtotals, [['REGULER', 1], ['SQM', 1], ['GAMAS', 1]]);
+  assert.equal(sheet.lastRow.getCell(5).value, 3);
+  const details = workbook.getWorksheet('Semua Tiket'), headers = details.getRow(1).values;
+  assert.equal(details.getRow(3).getCell(headers.indexOf('WOHI_SOURCE_GROUP')).value, 'SQM');
+  assert.equal(details.getRow(3).getCell(headers.indexOf('source_ticket')).value, 'PROACTIVE');
+});
+test('long grouped summaries retain source context and each category exactly once', () => {
+  const tickets = Array.from({ length: 150 }, (_, i) => ({ source_ticket: 'PROACTIVE',
+    WOHI_CATEGORY: `CATEGORY_${String(i).padStart(3, '0')}_${'X'.repeat(40)}`, WOHI_STATUS: 'OPEN' }));
+  const chunks = reportMessages('SURABAYA', tickets, now);
+  assert.ok(chunks.length > 1); assert.ok(chunks.every(chunk => chunk.length <= 3800));
+  assert.equal((chunks.join('').match(/CATEGORY_\d{3}_/g) || []).length, 150);
+  for (const chunk of chunks) if (chunk.includes('CATEGORY_')) assert.ok(chunk.includes('📋 SQM'));
 });
 test('only CLOSED counts as CLOSE; categories retain all rows without SLA', () => {
   const more = ['MEDIACARE', 'SALAMSIM', 'RESOLVED', '', 'UNKNOWN'].map((status, i) =>
@@ -69,8 +114,8 @@ test('Excel summary equals detail totals and preserves textual service and liter
   const workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(bytes);
   const summary = workbook.getWorksheet('Ringkasan'), details = workbook.getWorksheet('Semua Tiket');
   assert.equal(details.rowCount, 4);
-  assert.equal(summary.lastRow.getCell(4).value, 3);
-  assert.equal(summary.lastRow.getCell(2).value, 2);
+  assert.equal(summary.lastRow.getCell(5).value, 3);
+  assert.equal(summary.lastRow.getCell(3).value, 2);
   const headers = details.getRow(1).values;
   assert.equal(details.getRow(2).getCell(headers.indexOf('service_no')).value, '00123');
   assert.equal(details.getRow(2).getCell(headers.indexOf('customer_name')).value, '=1+1');
