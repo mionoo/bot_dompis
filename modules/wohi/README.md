@@ -29,7 +29,7 @@ Data tanpa pemetaan branch dicatat dan jumlahnya dibalas pada tes manual.
    terpisah dari grup FFG/B2B. Hanya binding ACTIVE yang menerima laporan.
 3. Kirim `/teswohi` lewat japri bot untuk mengirim ke seluruh binding WO HI.
    Command langsung membalas lalu masuk antrean bersama laporan existing.
-4. Atur WOHI_ENABLED=1 untuk jadwal setiap jam. Job WO HI berjalan setelah
+4. Atur WOHI_ENABLED=1 untuk jadwal setiap 2 jam pada 00:00, 02:00, hingga 22:00 WIB. Job WO HI berjalan setelah
    operasional dan FFG pada antrean test.js. Tidak ada cron tambahan.
    Default nonaktif sampai tujuan dan data selesai ditinjau.
 
@@ -46,7 +46,11 @@ mencatat pengiriman per periode/tujuan, tahap gagal, serta hasil pesan/Excel.
 UNKNOWN tidak dicoba ulang otomatis karena kiriman mungkin sudah sampai.
 Tes manual memakai kunci terpisah dan tidak memengaruhi jadwal otomatis.
 
-Tanggal laporan mengikuti waktu jadwal awal, walaupun job mengantre sampai hari
+Pada jadwal 00:00 WIB, rekap mengambil tiket yang dibuka hari sebelumnya.
+Jadwal 02:00 hingga 22:00 memakai hari berjalan. Tanggal laporan dan jadwal
+pengiriman ditampilkan terpisah. Command manual /teswohi tetap memakai hari
+berjalan, termasuk jika command dikirim pada 00:00.
+Tanggal acuan ditentukan dari jadwal awal, walaupun job mengantre sampai hari
 berikutnya. Status mengikuti data MySQL saat SELECT dijalankan, bukan rekonstruksi
 status historis. Validator yang belum memperbarui INSERA dapat membuat status
 laporan tertinggal. Jangan menjalankan beberapa proses scheduler sekaligus.

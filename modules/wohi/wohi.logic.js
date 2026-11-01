@@ -48,10 +48,11 @@ function summarize(tickets) {
   }
   return { categories: [...categories.values()].sort((a, b) => a.category.localeCompare(b.category)), total };
 }
-function reportMessages(branch, tickets, now) {
+function reportMessages(branch, tickets, now, reportDate = now) {
   const summary = summarize(tickets);
   const clean = value => String(value).replace(/[\r\n]+/g, ' ').slice(0, 100);
   const header = `📊 LAPORAN WO HI\n🏢 Branch: ${clean(branch)}\n📅 ` +
+    moment(reportDate).tz('Asia/Jakarta').format('DD/MM/YYYY') + '\n🕒 Jadwal: ' +
     moment(now).tz('Asia/Jakarta').format('DD/MM/YYYY HH:mm [WIB]') + '\n\n';
   const chunks = []; let chunk = header;
   for (const group of summarizeSources(tickets)) {

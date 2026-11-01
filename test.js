@@ -25,7 +25,7 @@ const scheduler = createReportScheduler({
 // Satu cron sepanjang hari. Malam di luar menit 00 hanya menjalankan FFG.
 cron.schedule("*/15 * * * *", context => {
   const job = planReports(context.date, process.env.FFG_ENABLED === "1", process.env.WOHI_ENABLED === "1");
-  if (!job.operational && !job.ffgActive && !job.wohiHourly) return;
+  if (!job.operational && !job.ffgActive && !job.wohiDue) return;
   void scheduler.requestSchedulerJob(job).catch(() => console.error("Scheduler gagal diproses"));
 }, { timezone: "Asia/Jakarta" });
 

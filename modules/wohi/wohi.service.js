@@ -10,11 +10,12 @@ function errorCode(error) {
   return /^[A-Za-z0-9_]{1,64}$/.test(String(code)) ? String(code) : 'ERROR';
 }
 async function runWohi(now = new Date(), runtime = {}) {
+  const reportDate = runtime.reportDate || now;
   const summary = { sent: 0, failed: 0, skipped: 0 };
   const bindings = await WohiGroups.find({ STATUS: 'ACTIVE' }).lean();
   if (!bindings.length) return { ...summary, reason: 'NO_BINDINGS' };
   let rows;
-  try { rows = await (runtime.source || createWohiSource()).fetchToday(now); }
+  try { rows = await (runtime.source || createWohiSource()).fetchToday(reportDate); }
   catch (error) { console.warn(`WO HI gagal | baca MySQL | ${errorCode(error)}`); throw error; }
   const mapping = await Groups.find({}).lean();
   const tickets = prepareTickets(rows, mapping);
@@ -32,7 +33,7 @@ async function runWohi(now = new Date(), runtime = {}) {
     const key = `${runtime.trigger === 'manual' ? `manual:${runtime.requestId}` : slot.toISOString()}:${branch}:${binding.ID_GRUP}:${binding.ID_TOPIC_GRUP || ''}`;
     try { await WohiDeliveries.create({ _id: key, status: 'SENDING', started_at: new Date(),
       trigger: runtime.trigger || 'schedule', branch, chat_id: binding.ID_GRUP,
-      topic_id: binding.ID_TOPIC_GRUP, scheduled_at: now, ticket_count: list.length }); }
+      topic_id: binding.ID_TOPIC_GRUP, scheduled_at: now, report_date: moment(reportDate).tz('Asia/Jakarta').format('YYYY-MM-DD'), ticket_count: list.length }); }
     catch (error) { if (error.code === 11000) { summary.skipped++; continue; } throw error; }
     let stage = 'buildExcel', sent = 0, attached = false;
     try {
@@ -40,12 +41,12 @@ async function runWohi(now = new Date(), runtime = {}) {
       stage = 'resolveBot';
       const bot = await (runtime.getBotByZone || require('../../core/globalSender').getBotByZone)(zone);
       const options = binding.ID_TOPIC_GRUP ? { message_thread_id: Number(binding.ID_TOPIC_GRUP) } : {};
-      for (const message of reportMessages(branch, list, now)) {
+      for (const message of reportMessages(branch, list, now, reportDate)) {
         stage = 'sendMessage'; await bot.telegram.sendMessage(binding.ID_GRUP, message, options); sent++;
       }
       stage = 'sendDocument';
       await bot.telegram.sendDocument(binding.ID_GRUP, { source: excel,
-        filename: `WO-HI-${branch.replace(/[^A-Z0-9_-]/g, '_')}-${moment(now).tz('Asia/Jakarta').format('YYYYMMDD-HHmm')}.xlsx` }, options);
+        filename: `WO-HI-${branch.replace(/[^A-Z0-9_-]/g, '_')}-${moment(reportDate).tz('Asia/Jakarta').format('YYYYMMDD') + '-' + moment(now).tz('Asia/Jakarta').format('HHmm')}.xlsx` }, options);
       attached = true; stage = 'saveStatus';
       await WohiDeliveries.updateOne({ _id: key }, { $set: { status: 'SENT', sent_messages: sent,
         attachment_sent: attached, completed_at: new Date() } });

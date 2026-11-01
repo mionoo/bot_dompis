@@ -160,15 +160,38 @@ test('binding captures group topic and manual command is private-only and queued
   await reportQueue.idle(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(ran, true); assert.ok(replies.at(-1).includes('Berhasil: 1'));
 });
-test('hourly WO HI is optional, after FFG, and retains original scheduled day', async () => {
-  assert.equal(planReports(now, false, true).wohiHourly, true);
-  assert.equal(planReports(new Date(+now + 900000), true, true).wohiHourly, false);
-  assert.equal(planReports(now, true).wohiHourly, false);
+test('two-hour WO HI is optional, after FFG, and retains original scheduled day', async () => {
+  assert.equal(planReports(now, false, true).wohiDue, true);
+  assert.equal(planReports(new Date(+now + 900000), true, true).wohiDue, false);
+  assert.equal(planReports(now, true).wohiDue, false);
   const events = [];
   const scheduler = createReportScheduler({ ffg: async mode => events.push(mode),
     wohi: async date => { assert.equal(date.toISOString(), now.toISOString()); events.push('wohi'); } },
   createReportQueue({ log() {} }));
   await scheduler.requestSchedulerJob({ scheduledAt: now, operational: false,
-    label: 'TEST', ffgActive: true, ffgHourly: true, wohiHourly: true });
+    label: 'TEST', ffgActive: true, ffgHourly: true, wohiDue: true });
   assert.deepEqual(events, ['active', 'hourly', 'wohi']);
+});
+test('WO HI fires only at even WIB hours; midnight selects previous day across calendar boundaries', async () => {
+  for (let hour = 0; hour < 24; hour++) for (const minute of [0, 15, 30, 45]) {
+    const date = new Date(Date.UTC(2026, 10, 2, hour - 7, minute));
+    assert.equal(planReports(date, true, true).wohiDue, hour % 2 === 0 && minute === 0);
+    assert.equal(planReports(date, true, false).wohiDue, false);
+  }
+  for (const [timestamp, expected] of [
+    ['2026-11-02T17:00:00Z', '2026-11-02 00:00:00'],
+    ['2026-10-31T17:00:00Z', '2026-10-31 00:00:00'],
+    ['2026-12-31T17:00:00Z', '2026-12-31 00:00:00'],
+  ]) {
+    const date = new Date(timestamp);
+    let received;
+    const scheduler = createReportScheduler({ wohi: async (scheduledAt, runtime) => {
+      received = { scheduledAt, runtime };
+    } }, createReportQueue({ log() {} }));
+    await scheduler.requestSchedulerJob({ ...planReports(date, false, true), operational: false });
+    assert.equal(received.scheduledAt.toISOString(), date.toISOString());
+    assert.equal(dayBounds(received.runtime.reportDate).start, expected);
+    const message = reportMessages('SURABAYA', prepareTickets(rows, mapping), date, received.runtime.reportDate).join('');
+    assert.ok(message.includes('00:00 WIB'));
+  }
 });
