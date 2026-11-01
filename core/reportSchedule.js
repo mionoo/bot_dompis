@@ -1,11 +1,12 @@
-function planReports(date, ffgEnabled) {
+function planReports(date, ffgEnabled, wohiEnabled = false) {
   const hour = (date.getUTCHours() + 7) % 24;
   const minute = date.getUTCMinutes();
   const operational = (hour >= 8 && hour < 22) || minute === 0;
   return { scheduledAt: new Date(date), operational,
     label: hour >= 8 && hour < 22 ? 'SIANG' : 'MALAM',
     includeTTR: operational, includeGamas: operational && minute === 0,
-    ffgActive: ffgEnabled, ffgHourly: ffgEnabled && minute === 0 };
+    ffgActive: ffgEnabled, ffgHourly: ffgEnabled && minute === 0,
+    wohiHourly: wohiEnabled && minute === 0 };
 }
 function createReportScheduler(deps, queue, logger = console) {
   async function runSchedulerJob(job) {
@@ -27,6 +28,10 @@ function createReportScheduler(deps, queue, logger = console) {
       if (!(mode === 'active' ? job.ffgActive : job.ffgHourly)) continue;
       try { await deps.ffg(mode, scheduledAt, { checkedAt: new Date() }); }
       catch (_) { logger.error(`❌ FFG ${mode} gagal pada scheduler`); }
+    }
+    if (job.wohiHourly) {
+      try { await deps.wohi(scheduledAt); }
+      catch (_) { logger.error('❌ Laporan WO HI gagal; periksa koneksi/konfigurasi sumber'); }
     }
   }
   function requestSchedulerJob(job) {

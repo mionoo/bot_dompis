@@ -112,6 +112,13 @@ async function handleGroupBinding(ctx, { text, prefix, Model, label }) {
 
 async function dispatch(ctx) {
   const text = ctx.message?.text || "";
+  if (/^\/wohi_/i.test(text)) {
+    return require('../modules/wohi/wohi.commands').bindWohi(ctx);
+  }
+  if (/^\/teswohi(?:@[A-Za-z0-9_]+)?(?:\s|$)/i.test(text)) {
+    return require('../modules/wohi/wohi.commands').testWohi(ctx);
+  }
+
   const ffgTestCommand = text.trim().split(/\s+/)[0].replace(/@[A-Za-z0-9_]+$/, '').toLowerCase();
   if (['/tesffgremin', '/tesffgalltiket'].includes(ffgTestCommand)) {
     const { testFfg } = require('../modules/ffg/ffg.commands');

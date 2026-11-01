@@ -13,18 +13,19 @@ const {
 } = require("./modules/segmentasiTiket/segmentasi.clear");
 
 const { runFfg } = require("./modules/ffg/ffg.service");
+const { runWohi } = require("./modules/wohi/wohi.service");
 const { reportQueue } = require("./core/reportQueue");
 const { planReports, createReportScheduler } = require("./core/reportSchedule");
 const scheduler = createReportScheduler({
   segment: jalanSegmentasi, ttr: runTTR, officer: runTtrOfficer,
   ploting: runPloting, b2b: runTtrb2b, hd: runTtrHD, gamas: runGamas,
-  clearSegment: clearSegmentTickets, clearAll: clearAllTickets, ffg: runFfg,
+  clearSegment: clearSegmentTickets, clearAll: clearAllTickets, ffg: runFfg, wohi: runWohi,
 }, reportQueue);
 
 // Satu cron sepanjang hari. Malam di luar menit 00 hanya menjalankan FFG.
 cron.schedule("*/15 * * * *", context => {
-  const job = planReports(context.date, process.env.FFG_ENABLED === "1");
-  if (!job.operational && !job.ffgActive) return;
+  const job = planReports(context.date, process.env.FFG_ENABLED === "1", process.env.WOHI_ENABLED === "1");
+  if (!job.operational && !job.ffgActive && !job.wohiHourly) return;
   void scheduler.requestSchedulerJob(job).catch(() => console.error("Scheduler gagal diproses"));
 }, { timezone: "Asia/Jakarta" });
 
