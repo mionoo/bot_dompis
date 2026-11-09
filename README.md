@@ -65,3 +65,27 @@ Semua binding ORDER/REPORT/KAWAL untuk ID grup dan topik tersebut dihapus.
 Di grup biasa hanya binding grup tersebut; di luar topik forum hanya binding
 utama, tanpa menghapus topik lain. Mendukung mention bot. Untuk mendaftarkan
 kembali gunakan `/set`. Binding GAMAS/B2B/HD/FFG tidak diubah.
+
+
+## Command pada grup dengan beberapa bot
+
+Pada grup/supergrup, gunakan akhiran username bot agar hanya bot tujuan yang
+memproses command, termasuk ketika dikirim pada topik. Contoh:
+
+```text
+/setgrup@Assist_SuraMadu_bot
+/monHD_SURABAYA@Assist_SuraMadu_bot
+/ttrb2b_SURABAYA@Assist_SuraMadu_bot
+/help@Assist_SuraMadu_bot
+```
+
+`/setgrup` adalah alias `/set`. Bot lain mengabaikan command yang bukan untuknya
+sebelum pemeriksaan sesi atau database. Akhiran username tidak dimasukkan ke
+nama branch. Command tanpa mention pada grup diabaikan untuk mencegah semua bot
+ikut terpicu. Pada japri, command tanpa mention tetap berfungsi.
+
+Aturan ini berlaku untuk command setup, binding, penghapusan binding, bantuan,
+dan laporan manual. Pembatasan asli tetap berlaku: command khusus japri tidak
+menjadi command grup hanya karena diberi mention. Command dikenal tidak dianggap
+sebagai masukan NIK/nama ketika sesi registrasi aktif. Callback tombol tetap
+memakai mekanisme existing.

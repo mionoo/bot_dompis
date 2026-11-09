@@ -111,7 +111,10 @@ async function handleGroupBinding(ctx, { text, prefix, Model, label }) {
 }
 
 async function dispatch(ctx) {
-  const text = ctx.message?.text || "";
+  const { parseCommand } = require("./commandParser");
+  const parsed = parseCommand(ctx.message?.text, ctx.chat?.type, ctx.botInfo?.username || ctx.me);
+  if (parsed.ignore) return;
+  const text = parsed.text;
   if (/^\/wohi_/i.test(text)) {
     return require('../modules/wohi/wohi.commands').bindWohi(ctx);
   }
@@ -144,6 +147,12 @@ async function dispatch(ctx) {
   const isCommand = (name) => new RegExp(`^/${name}(?:@[A-Za-z0-9_]+)?(?:\\s|$)`).test(text);
 
   // /set selalu harus dapat memulai ulang setup, bahkan bila ada flow lain aktif.
+  if (isCommand("help")) {
+    const result = await handleMessage({ text: "/help" });
+    if (result?.reply) return ctx.reply(result.reply);
+    return;
+  }
+
   if (isCommand("set")) {
     if (!ctx.chat.type.includes("group")) {
       return ctx.reply("⚠️ Hanya bisa di group");
@@ -210,7 +219,7 @@ async function dispatch(ctx) {
   // ======================
   // PRIORITAS: FLOW
   // ======================
-  if (ctx.session?.step) {
+  if (ctx.session?.step && !parsed.isCommand) {
     //arahkan ke auth flow kalau step auth
     if (ctx.session.step.startsWith("REGISTER")) {
       return handleAuthFlow(ctx);
@@ -222,15 +231,15 @@ async function dispatch(ctx) {
   // ======================
   // COMMAND
   // ======================
-  if (text.startsWith("/naker")) {
-    const args = text.split(" ").slice(1);
+  if (isCommand("naker")) {
+    const args = text.trim().split(/\s+/).slice(1);
     //const data = await fetchReport(); // ⬅️ ini kuncinya
     //console.log(data);
     return nakerCommand(ctx, args);
   }
 
   //sendEvidence({ incident, type, chatId, topicId }
-  if (text === "/teskirimevident") {
+  if (isCommand("teskirimevident")) {
     await sendEvidence({
       incident: "INC123456",
       type: "CLOSE",
@@ -242,11 +251,11 @@ async function dispatch(ctx) {
 
   const manualReports = [
     { matches: isCommand("tesgamas"), command: "/tesgamas", message: "Laporan GAMAS sedang diproses. Hasil dikirim ke grup GAMAS yang sudah terdaftar.", run: runGamas },
-    { matches: text === "/testtr", command: "/testtr", message: "TTR sedang diproses 🚀", run: runTTR },
-    { matches: text === "/tesploting", command: "/tesploting", message: "Ploting Test sedang diproses 🚀", run: runPloting },
-    { matches: text.startsWith("/cekofficer"), command: "/cekofficer", message: "Officer sedang diproses 🚀", run: runTtrOfficer },
-    { matches: text.startsWith("/tesgrupb2b"), command: "/tesgrupb2b", message: "TTR B2B sedang diproses 🚀", run: runTtrb2b },
-    { matches: text.startsWith("/tesgrupHD"), command: "/tesgrupHD", message: "TTR HD sedang diproses 🚀", run: runTtrHD },
+    { matches: isCommand("testtr"), command: "/testtr", message: "TTR sedang diproses 🚀", run: runTTR },
+    { matches: isCommand("tesploting"), command: "/tesploting", message: "Ploting Test sedang diproses 🚀", run: runPloting },
+    { matches: isCommand("cekofficer"), command: "/cekofficer", message: "Officer sedang diproses 🚀", run: runTtrOfficer },
+    { matches: isCommand("tesgrupb2b"), command: "/tesgrupb2b", message: "TTR B2B sedang diproses 🚀", run: runTtrb2b },
+    { matches: isCommand("tesgrupHD"), command: "/tesgrupHD", message: "TTR HD sedang diproses 🚀", run: runTtrHD },
   ];
   const manualReport = manualReports.find(report => report.matches);
   if (manualReport) {
