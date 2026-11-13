@@ -201,6 +201,10 @@ async function dispatch(ctx) {
     return ctx.reply("🆔 Masukkan NIK Anda:");
   }
 
+  if (isCommand("editnaker")) {
+    return require("../modules/naker/naker.edit").startEditNaker(ctx, text.trim().split(/\s+/).slice(1));
+  }
+
   if (isCommand("cancel") && isPrivateChat) {
     if (!ctx.session?.step) return ctx.reply("Tidak ada proses aktif.");
     clearPrivateFlow(ctx);
@@ -226,6 +230,9 @@ async function dispatch(ctx) {
   // PRIORITAS: FLOW
   // ======================
   if (ctx.session?.step && !parsed.isCommand) {
+    if (ctx.session.step.startsWith("EDIT_NAKER_")) {
+      return require("../modules/naker/naker.edit").handleEditNaker(ctx);
+    }
     //arahkan ke auth flow kalau step auth
     if (ctx.session.step.startsWith("REGISTER")) {
       return handleAuthFlow(ctx);

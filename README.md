@@ -89,3 +89,11 @@ dan laporan manual. Pembatasan asli tetap berlaku: command khusus japri tidak
 menjadi command grup hanya karena diberi mention. Command dikenal tidak dianggap
 sebagai masukan NIK/nama ketika sesi registrasi aktif. Callback tombol tetap
 memakai mekanisme existing.
+
+### Edit profil naker
+
+Semua level dapat memakai `/editnaker` lewat japri setelah binding Telegram.
+Opsional: `/editnaker <NIK>` untuk memilih profil milik akun yang sama.
+Kirim nama baru, periksa pratinjau, lalu ketik `SIMPAN` atau `/cancel`.
+Sesi berlaku 15 menit. Edit mandiri hanya mengubah nama. NIK, binding Telegram,
+level, service area, dan branch tidak diubah oleh command ini.
