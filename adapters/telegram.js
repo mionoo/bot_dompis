@@ -56,6 +56,7 @@ BOTS.forEach(({ bot, label }) => {
   bot.use(session());
 
   bot.on("text", (ctx) => dispatch(ctx));
+  bot.action(/^editnaker:/, ctx => require("../modules/naker/naker.edit").handleEditNakerButton(ctx));
 
   bot.catch(async (err, ctx) => {
     console.error(`❌ [${label}] Unhandled error:`, err);

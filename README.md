@@ -94,6 +94,7 @@ memakai mekanisme existing.
 
 Semua level dapat memakai `/editnaker` lewat japri setelah binding Telegram.
 Opsional: `/editnaker <NIK>` untuk memilih profil milik akun yang sama.
-Kirim nama baru, periksa pratinjau, lalu ketik `SIMPAN` atau `/cancel`.
-Sesi berlaku 15 menit. Edit mandiri hanya mengubah nama. NIK, binding Telegram,
-level, service area, dan branch tidak diubah oleh command ini.
+Pilih branch dan service area melalui tombol, lalu tekan **Simpan** atau **Batal**.
+Pilihan branch mengikuti alokasi bot dan service area mengikuti branch terpilih.
+Sesi berlaku 15 menit dan juga dapat dibatalkan dengan /cancel. Hanya BRANCH
+dan SERVICE_AREA yang dapat diubah. NIK, nama, level, dan binding tetap.

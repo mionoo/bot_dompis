@@ -231,7 +231,7 @@ async function dispatch(ctx) {
   // ======================
   if (ctx.session?.step && !parsed.isCommand) {
     if (ctx.session.step.startsWith("EDIT_NAKER_")) {
-      return require("../modules/naker/naker.edit").handleEditNaker(ctx);
+      return ctx.reply("Gunakan tombol pada pesan /editnaker atau /cancel.");
     }
     //arahkan ke auth flow kalau step auth
     if (ctx.session.step.startsWith("REGISTER")) {
