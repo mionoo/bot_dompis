@@ -115,6 +115,12 @@ async function dispatch(ctx) {
   const parsed = parseCommand(ctx.message?.text, ctx.chat?.type, ctx.botInfo?.username || ctx.me);
   if (parsed.ignore) return;
   const text = parsed.text;
+  if (/^\/gaul_/i.test(text)) {
+    return require("../modules/gaul/gaul.commands").bindGaul(ctx, text.slice(6).trim().toUpperCase());
+  }
+  if (parsed.command === "/tesgaul") {
+    return require("../modules/gaul/gaul.commands").testGaul(ctx);
+  }
   if (/^\/wohi_/i.test(text)) {
     return require('../modules/wohi/wohi.commands').bindWohi(ctx);
   }

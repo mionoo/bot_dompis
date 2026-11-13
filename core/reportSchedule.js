@@ -1,4 +1,4 @@
-function planReports(date, ffgEnabled, wohiEnabled = false) {
+function planReports(date, ffgEnabled, wohiEnabled = false, gaulEnabled = false) {
   const hour = (date.getUTCHours() + 7) % 24;
   const minute = date.getUTCMinutes();
   const operational = (hour >= 8 && hour < 22) || minute === 0;
@@ -6,11 +6,13 @@ function planReports(date, ffgEnabled, wohiEnabled = false) {
     label: hour >= 8 && hour < 22 ? 'SIANG' : 'MALAM',
     includeTTR: operational, includeGamas: operational && minute === 0,
     ffgActive: ffgEnabled, ffgHourly: ffgEnabled && minute === 0,
+    gaulDue: gaulEnabled && minute === 0,
     wohiDue: wohiEnabled && minute === 0 && hour % 2 === 0 };
 }
 function createReportScheduler(deps, queue, logger = console) {
   async function runSchedulerJob(job) {
     const scheduledAt = job.scheduledAt || new Date();
+    let operationalReady = false;
     if (job.operational !== false) {
       try {
         await deps.segment();
@@ -20,9 +22,18 @@ function createReportScheduler(deps, queue, logger = console) {
         await deps.b2b();
         await deps.hd();
         if (job.includeGamas) await deps.gamas();
+        operationalReady = true;
+      } catch (_) { logger.error(`❌ Scheduler ${job.label}: proses operasional gagal; laporan terpisah tetap diperiksa`); }
+    }
+    if (job.gaulDue) {
+      try { await deps.gaul(scheduledAt); }
+      catch (_) { logger.error('❌ Laporan GAUL gagal; periksa koneksi sumber'); }
+    }
+    if (operationalReady) {
+      try {
         await deps.clearSegment();
         await deps.clearAll();
-      } catch (_) { logger.error(`❌ Scheduler ${job.label}: proses operasional gagal; FFG tetap diperiksa`); }
+      } catch (_) { logger.error('❌ Pembersihan data operasional gagal'); }
     }
     for (const mode of ['active', 'hourly']) {
       if (!(mode === 'active' ? job.ffgActive : job.ffgHourly)) continue;
