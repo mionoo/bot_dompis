@@ -27,7 +27,7 @@ sebelum aktivasi tidak diperiksa ulang otomatis.
   workzone dipakai untuk menentukan service area dan branch. Jika tidak ada
   pemetaan yang dapat dipakai, tiket tidak dapat diarahkan ke grup.
 - Pengingat mencantumkan kedua incident dan tanggal laporan, nomor service,
-  workzone serta SLA existing. PIC KORLAP, OSA, dan HSA ditag melalui ID Telegram
+  workzone serta SLA existing. PIC KORLAP, OSA, HSA, dan Officer 3 ditag melalui ID Telegram
   sesuai service area dan branch jika terisi. Telegram menentukan apakah tag
   berbasis ID dapat memberi notifikasi kepada pengguna.
 - Pengiriman per tujuan dan periode disimpan di gaul_deliveries. Kiriman tidak

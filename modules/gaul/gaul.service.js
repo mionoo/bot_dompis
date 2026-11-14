@@ -5,17 +5,18 @@ const { Groups } = require('../../models/group');
 const { SegmentTickets } = require('../../models/dompis');
 const { Nakers } = require('../../models/users');
 const { normalize, sla, snapshot, sourceDate } = require('../ffg/ffg.logic');
+const { SEGMENT_PRIORITY } = require('../branch/branch.data');
 const { remainingTime } = require('../ffg/ffg.formatter');
 
 const loose = collection => new mongoose.Schema({ _id: String }, { collection, strict: false });
 const Tickets = mongoose.model('GaulTicket', loose('gaul_tickets'));
 const Deliveries = mongoose.model('GaulDelivery', loose('gaul_deliveries'));
 const binding = new mongoose.Schema({ BRANCH: String, ID_GRUP: String, ID_TOPIC_GRUP: String,
-  STATUS: String }, { collection: 'gaul_groups' });
+  STATUS: String }, { collection: 'gaul_groups', bufferCommands: false });
 binding.index({ BRANCH: 1, ID_GRUP: 1, ID_TOPIC_GRUP: 1 }, { unique: true });
 const GaulGroups = mongoose.model('GaulGroup', binding);
 const branchName = value => normalize(value).replace(/^(BRANCH|AREA)\s+/, '');
-const level = /^\s*(?:korlap|osa|hsa)\s*$/i;
+const level = /^\s*(?:korlap|osa|hsa|officer\s+3)\s*$/i;
 const escape = value => String(value ?? '-').slice(0, 120).replace(/&/g, '&amp;')
   .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const dateText = value => {
@@ -60,33 +61,63 @@ function reminderMessages(branch, reminders, nakers, now) {
   }
   const title = '🔁 <b>PENGINGAT TIKET GAUL</b>\n🏢 Branch: ' + escape(branch) + '\n';
   const result = [];
+  let chunk = title;
+  const append = (block, continuation = '') => {
+    if (chunk.length + block.length > 3800) {
+      result.push(chunk);
+      chunk = title + continuation;
+    }
+    chunk += block;
+  };
+  const icons = { SAFE: '🟢', WARNING: '🟡', CRITICAL: '🟠', 'OVER SLA': '🔴' };
   for (const [area, list] of sections) {
-    const heading = title + '📍 Service Area: ' + escape(area) + '\n';
-    let chunk = heading;
-    const flush = () => { if (chunk !== heading) result.push(chunk); chunk = heading; };
+    const heading = '\n📍 <b>' + escape(area) + '</b>\n';
+    append((chunk === title ? '' : '\n━━━━━━━━━━━━━━━━━━\n') + heading);
     const ids = new Set();
+    let hasPic = false;
     for (const naker of nakers) {
       const id = String(naker.ID_TELEGRAM || '').trim();
-      if (!/^\d{1,20}$/.test(id) || ids.has(id) || !level.test(naker.LEVEL) ||
-          normalize(naker.SERVICE_AREA) !== area ||
+      if (!level.test(naker.LEVEL) || normalize(naker.SERVICE_AREA) !== area ||
           (naker.BRANCH && branchName(naker.BRANCH) !== branch)) continue;
-      ids.add(id);
-      const tag = '👥 PIC: <a href="tg://user?id=' + id + '">' + escape(naker.NAMA || 'PIC') + '</a>\n';
-      if (chunk.length + tag.length > 3800) flush();
-      chunk += tag;
+      const validId = /^\d{1,20}$/.test(id);
+      const key = validId ? id : 'name:' + normalize(naker.NAMA);
+      if (ids.has(key)) continue;
+      ids.add(key);
+      hasPic = true;
+      const name = escape(naker.NAMA || 'PIC');
+      const tag = validId ? '<a href="tg://user?id=' + id + '">' + name + '</a>' : name + ' (belum binding Telegram)';
+      append('👥 PIC: ' + tag + '\n', heading);
     }
-    for (const { tracked, current } of list) {
-      const analysis = sla(snapshot(current), now);
-      const block = '\nWorkzone: ' + escape(current.workzone) + ' | Service: ' + escape(tracked.service_no) +
-        '\nTiket lama: ' + escape(tracked.previous_incident) + ' — CLOSED\nDilaporkan: ' + dateText(tracked.previous_reported_date) +
-        '\nTiket aktif: ' + escape(current.incident) + ' — ' + escape(current.status) +
-        '\nDilaporkan: ' + dateText(current.reported_date) + '\nSLA: ' + escape(analysis.label) +
-        (Number.isFinite(analysis.remaining) ? ' | Sisa: ' + remainingTime(analysis.remaining) : '') + '\n';
-      if (chunk.length + block.length > 3800) flush();
-      chunk += block;
+    if (!hasPic) append('👥 PIC: Belum ditemukan\n', heading);
+    const types = new Map();
+    for (const reminder of list) {
+      const analysis = sla(snapshot(reminder.current), now);
+      const key = JSON.stringify([analysis.segment, analysis.target]);
+      if (!types.has(key)) types.set(key, []);
+      types.get(key).push({ ...reminder, analysis });
     }
-    flush();
+    const priority = type => SEGMENT_PRIORITY[type[0].analysis.segment] || 99;
+    for (const type of [...types.values()].sort((a, b) => priority(a) - priority(b) ||
+      a[0].analysis.segment.localeCompare(b[0].analysis.segment))) {
+      const { segment, target } = type[0].analysis;
+      const label = '\n📌 <b>' + escape(segment) + '</b> (' + type.length + ' tiket' +
+        (Number.isFinite(target) ? ' | SLA ' + target + 'H' : '') + ')\n';
+      let prefix = label;
+      for (const { tracked, current, analysis } of type.sort((a, b) =>
+        (a.analysis.remaining ?? Infinity) - (b.analysis.remaining ?? Infinity))) {
+        const block = (icons[analysis.label] || '⚪') + ' <b>' + escape(current.incident) + '</b> — ' +
+          escape(current.status) + ' | Sisa: <b>' + (Number.isFinite(analysis.remaining)
+            ? remainingTime(analysis.remaining) : '-') + '</b> | ' + escape(current.workzone) +
+          '\n   No. layanan: ' + escape(tracked.service_no) +
+          '\n   Reported Date: ' + dateText(current.reported_date) +
+          '\n   ↩️ ' + escape(tracked.previous_incident) + ' — CLOSED' +
+          '\n      Reported Date: ' + dateText(tracked.previous_reported_date) + '\n';
+        append(prefix + block, heading + (prefix ? '' : label));
+        prefix = '';
+      }
+    }
   }
+  if (chunk !== title) result.push(chunk);
   return result;
 }
 

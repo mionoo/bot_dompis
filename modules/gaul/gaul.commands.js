@@ -2,12 +2,20 @@ const { findBranch } = require('../branch/branch.data');
 const { reportQueue } = require('../../core/reportQueue');
 const { GaulGroups, runGaul } = require('./gaul.service');
 
-async function bindGaul(ctx, branch) {
+async function bindGaul(ctx, branch, model = GaulGroups) {
   if (!['group', 'supergroup'].includes(ctx.chat.type)) return ctx.reply('Binding GAUL hanya di grup atau topik tujuan.');
   if (!findBranch(branch)) return ctx.reply('Branch tidak terdaftar. Contoh: /gaul_SURABAYA@NamaBot');
   const filter = { BRANCH: branch, ID_GRUP: String(ctx.chat.id),
     ID_TOPIC_GRUP: ctx.message.message_thread_id ? String(ctx.message.message_thread_id) : null };
-  await GaulGroups.updateOne(filter, { $set: { STATUS: 'ACTIVE' } }, { upsert: true });
+  const unavailable = 'MongoDB bot belum terhubung. Binding GAUL belum tersimpan; periksa koneksi bot25 lalu coba lagi.';
+  if (model.db.readyState !== 1) return ctx.reply(unavailable);
+  try {
+    await model.updateOne(filter, { $set: { STATUS: 'ACTIVE' } }, { upsert: true });
+  } catch (error) {
+    console.warn('Binding GAUL gagal | MongoDB | ' + (Number.isInteger(error.code) ? error.code : 'WRITE_FAILED'));
+    if (model.db.readyState !== 1) return ctx.reply(unavailable);
+    return ctx.reply('Binding GAUL gagal disimpan. Periksa akses tulis MongoDB bot25.');
+  }
   return ctx.reply('✅ Grup GAUL aktif untuk ' + branch);
 }
 
