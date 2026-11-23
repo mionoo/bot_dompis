@@ -149,11 +149,12 @@ async function processTickets() {
     // CLEAN DATA
     // =================================
 
+    // Worker MySQL sudah mengubah WIB menjadi ISO UTC. Jangan kurangi 7 jam lagi.
     const cleanTicket = {
       incident: ticket.incident || null,
 
       reported_date: ticket.reported_date
-        ? moment(ticket.reported_date).subtract(7, "hours").toDate()
+        ? moment(ticket.reported_date).toDate()
         : null,
 
       workzone: workzone || null,
@@ -172,7 +173,7 @@ async function processTickets() {
       description_actual_solution: ticket.description_actual_solution || null,
 
       booking_date: ticket.booking_date
-        ? moment(ticket.booking_date).subtract(7, "hours").toDate()
+        ? moment(ticket.booking_date).toDate()
         : null,
 
       jenis_tiket: jenis_tiket || null,
